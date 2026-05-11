@@ -7286,7 +7286,7 @@ function renderLyricsPanel() {
             const params = ['embed=1'];
             if (rhymeQuery) params.push('q=' + encodeURIComponent(rhymeQuery));
             const qs = '?' + params.join('&');
-            rhymesPane.innerHTML = `<iframe class="lp-rhymes-frame" src="/rhymeforge/${qs}" title="RhymeForge"></iframe>`;
+            rhymesPane.innerHTML = `<iframe class="lp-rhymes-frame" src="rhymeforge/${qs}" title="RhymeForge"></iframe>`;
             iframe = rhymesPane.querySelector('.lp-rhymes-frame');
             // Belt-and-braces: also fire postMessage once the iframe loads.
             iframe.addEventListener('load', sendQuery);
