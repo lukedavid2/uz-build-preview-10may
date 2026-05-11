@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Undercover Zest — A suite of free songwriting tools. Chord progressions, rhyme finding, metaphor building, morning pages, and sensory writing.">
+<meta property="og:title" content="Undercover Zest — Songwriting Tools">
+<meta property="og:description" content="Five free tools built for songwriters — from chords and rhymes to metaphors, morning pages, and sensory sparks.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://undercoverzest.app/lemon-logo.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Undercover Zest — Free Songwriting Tools">
+<meta name="twitter:description" content="Five free tools built for songwriters — from chords and rhymes to metaphors, morning pages, and sensory sparks.">
+<meta name="keywords" content="free songwriting tools, chord progression builder, rhyme finder, metaphor generator, morning pages, sensory writing prompts, songwriter tools">
+<meta name="theme-color" content="#c8a04a">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍋</text></svg>">
+<title>Undercover Zest — Songwriting Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0e0e14;
+  --lab-bg: #0e0e14;
+  --surface: #14141e;
+  --surface-2: #1a1a28;
+  --border: #252530;
+  --border-light: #2e2e3a;
+  --text: #ebe8e2;
+  --text-dim: #a0a0a8;
+  --text-faint: #606068;
+  --gold: #d4a853;
+  --gold-dim: #c8a04a;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ══════════════════════════════════════════════════
+   HERO
+   ══════════════════════════════════════════════════ */
+.hero {
+  text-align: center;
+  padding: 72px 24px 48px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.hero-logo {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  object-fit: cover;
+  box-shadow: 0 8px 32px rgba(212,168,83,0.15);
+  margin-bottom: 24px;
+}
+.hero-logo-fallback {
+  font-size: 64px;
+  margin-bottom: 24px;
+  display: none;
+}
+.hero h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(36px, 6vw, 52px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin-bottom: 16px;
+}
+.hero h1 span { color: var(--gold); }
+.hero .tagline {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-faint);
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.hero .subtitle {
+  font-size: 17px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* ══════════════════════════════════════════════════
+   BANNERS — stacked list (desktop), tiles (mobile)
+   ══════════════════════════════════════════════════ */
+.banners-section {
+  max-width: 900px;
+  margin: 0 auto 80px;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Shared banner base (Option 1: Minimal Strip) ── */
+.b1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  padding: 20px 28px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  color: inherit;
+  background: #08080c;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.b1::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+}
+.b1:hover { transform: translateY(-1px); }
+
+.b1-icon {
+  flex-shrink: 0;
+  width: 64px; height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+}
+.b1-icon svg { width: 44px; height: 44px; }
+
+.b1-content { flex: 1; min-width: 0; }
+.b1-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+.b1-body {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+.b1-body strong { color: var(--text); font-weight: 600; }
+
+.b1-cta {
+  flex-shrink: 0;
+  padding: 10px 22px;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+/* ── Per-app accent colours ── */
+
+/* Undercover Zest — lime green #84cc16 */
+.b1--uz::before { background: linear-gradient(90deg, transparent, rgba(132,204,22,0.35), transparent); }
+.b1--uz:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+.b1--uz .b1-icon { background: rgba(132,204,22,0.08); border: 1px solid rgba(132,204,22,0.15); color: #84cc16; }
+.b1--uz .b1-title em { font-style: normal; color: #84cc16; }
+.b1--uz .b1-cta { border: 1.5px solid #84cc16; color: #84cc16; }
+.b1--uz:hover .b1-cta { background: #84cc16; color: #08080c; }
+
+/* RhymeForge — #d4a853 */
+.b1--rf::before { background: linear-gradient(90deg, transparent, rgba(212,168,83,0.3), transparent); }
+.b1--rf:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+.b1--rf .b1-icon { background: rgba(212,168,83,0.08); border: 1px solid rgba(212,168,83,0.15); color: #d4a853; }
+.b1--rf .b1-title em { font-style: normal; color: #d4a853; }
+.b1--rf .b1-cta { border: 1.5px solid #d4a853; color: #d4a853; }
+.b1--rf:hover .b1-cta { background: #d4a853; color: #08080c; }
+
+/* CollisionLab — #a78bfa */
+.b1--cl::before { background: linear-gradient(90deg, transparent, rgba(167,139,250,0.35), transparent); }
+.b1--cl:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+.b1--cl .b1-icon { background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.15); color: #a78bfa; }
+.b1--cl .b1-title em { font-style: normal; color: #a78bfa; }
+.b1--cl .b1-cta { border: 1.5px solid #a78bfa; color: #a78bfa; }
+.b1--cl:hover .b1-cta { background: #a78bfa; color: #08080c; }
+
+/* Morning Pages — #e4a74b golden amber with split-letter title */
+.b1--mp::before { background: linear-gradient(90deg, transparent, rgba(228,167,75,0.35), transparent); }
+.b1--mp:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+.b1--mp .b1-icon { background: rgba(228,167,75,0.08); border: 1px solid rgba(228,167,75,0.15); color: #e4a74b; }
+.b1--mp .b1-title {
+  background: linear-gradient(180deg, #e4a74b 0%, #e4a74b 65%, #ffffff 69%, #ffffff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
+.b1--mp .b1-cta { border: 1.5px solid #e4a74b; color: #e4a74b; }
+.b1--mp:hover .b1-cta { background: #e4a74b; color: #08080c; }
+
+/* SenseSpark — #E8453C */
+.b1--ss::before { background: linear-gradient(90deg, transparent, rgba(232,69,60,0.35), transparent); }
+.b1--ss:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+.b1--ss .b1-icon { background: rgba(232,69,60,0.08); border: 1px solid rgba(232,69,60,0.15); color: #E8453C; }
+.b1--ss .b1-title em { font-style: normal; color: #E8453C; }
+.b1--ss .b1-cta { border: 1.5px solid #E8453C; color: #E8453C; }
+.b1--ss:hover .b1-cta { background: #E8453C; color: #fff; }
+
+/* ══════════════════════════════════════════════════
+   MOBILE TILES — app card grid
+   ══════════════════════════════════════════════════ */
+.app-card {
+  display: none; /* hidden on desktop — banners are primary */
+}
+
+/* Footer CSS now provided by uz-footer.js */
+
+/* ══════════════════════════════════════════════════
+   RESPONSIVE — Mobile: hide banners, show tile grid
+   ══════════════════════════════════════════════════ */
+@media (max-width: 700px) {
+  .hero { padding: 48px 20px 36px; }
+  .hero h1 { font-size: 32px; }
+
+  /* Hide the full-width banners on mobile */
+  .banners-section { display: none; }
+
+  /* Show tile cards on mobile */
+  .app-card {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 16px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .app-card:hover {
+    border-color: rgba(212,168,83,0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+  .app-card::after {
+    content: '';
+    position: absolute;
+    top: -1px; left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 2px;
+    background: var(--app-color, var(--gold));
+    transition: width 0.3s ease;
+  }
+  .app-card:hover::after { width: 60%; }
+
+  .mobile-grid {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .app-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    color: var(--app-color, var(--gold));
+    background: color-mix(in srgb, var(--app-color, var(--gold)) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--app-color, var(--gold)) 15%, transparent);
+  }
+  .app-icon svg { width: 22px; height: 22px; }
+
+  .app-card h3 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+  .app-card h3 em {
+    font-style: normal;
+    color: var(--app-color, var(--gold));
+  }
+  .app-card .app-tagline {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.45;
+    margin-bottom: 14px;
+  }
+  .app-card .app-cta {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--app-color, var(--gold));
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .uz-site-footer { padding: 20px 12px; }
+  .uz-donation-btn { padding: 8px 18px; font-size: 13px; }
+}
+@media (max-width: 480px) {
+  .uz-site-footer { padding: 16px 8px; margin-top: 30px; }
+  .uz-donation-btn { padding: 8px 14px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     HERO
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="hero">
+  <img src="lemon-logo.png" alt="Undercover Zest" class="hero-logo"
+       onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+  <div class="hero-logo-fallback">🍋</div>
+  <div class="tagline">The zest in saucey songwriting</div>
+  <h1>Undercover <span>Zest</span></h1>
+  <p class="subtitle">Five free tools built for songwriters — from chords and rhymes to metaphors, morning pages, and sensory sparks.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     BANNERS — all 5 stacked (desktop only, hidden on mobile)
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="banners-section">
+
+  <!-- Morning Pages -->
+  <a href="../morningpages/" class="b1 b1--mp">
+    <div class="b1-icon">
+      <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="19" r="5" stroke="currentColor" stroke-width="2.5" fill="none"/><path d="M24 11 V13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M17 14 L18.5 15.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M31 14 L29.5 15.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M14 19 H16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M32 19 H34" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="12" y1="26" x2="36" y2="26" stroke="currentColor" stroke-width="2" opacity="0.4"/><line x1="14" y1="31" x2="34" y2="31" stroke="currentColor" stroke-width="2" opacity="0.3"/><line x1="16" y1="36" x2="32" y2="36" stroke="currentColor" stroke-width="2" opacity="0.2"/></svg>
+    </div>
+    <div class="b1-content">
+      <div class="b1-title">Morning Pages</div>
+      <div class="b1-body"><strong>Write before you think.</strong> Stream-of-consciousness freewriting to clear the mental fog and unlock raw creativity before you pick up the guitar.</div>
+    </div>
+    <div class="b1-cta">Start writing</div>
+  </a>
+
+  <!-- Undercover Zest -->
+  <a href="../" class="b1 b1--uz">
+    <div class="b1-icon">
+      <svg viewBox="0 0 48 48" fill="none"><path d="M24 38 C24 38 15 26 15 18 C15 12 19 9 24 9 C29 9 33 12 33 18 C33 26 24 38 24 38Z" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linejoin="round"/><line x1="17.5" y1="17" x2="30.5" y2="17" stroke="currentColor" stroke-width="1.8" opacity="0.45"/><line x1="16.5" y1="22" x2="31.5" y2="22" stroke="currentColor" stroke-width="1.8" opacity="0.45"/><line x1="18.5" y1="27" x2="29.5" y2="27" stroke="currentColor" stroke-width="1.8" opacity="0.45"/></svg>
+    </div>
+    <div class="b1-content">
+      <div class="b1-title">Undercover <em>Zest</em></div>
+      <div class="b1-body"><strong>Build progressions that move people.</strong> Explore chords, keys, and music theory with an interactive guitar companion built for songwriters.</div>
+    </div>
+    <div class="b1-cta">Start building chords</div>
+  </a>
+
+  <!-- SenseSpark -->
+  <a href="../sensespark/" class="b1 b1--ss">
+    <div class="b1-icon">
+      <svg viewBox="0 0 48 48" fill="none"><ellipse cx="24" cy="24" rx="12" ry="8" stroke="currentColor" stroke-width="2.5" fill="none"/><circle cx="24" cy="24" r="3.5" stroke="currentColor" stroke-width="2.2" fill="none"/><circle cx="24" cy="24" r="1.2" fill="currentColor"/><path d="M24 14 L24 9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity="0.5"/><path d="M19 15 L16 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.45"/><path d="M29 15 L32 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.45"/><path d="M14.5 18 L10 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.35"/><path d="M33.5 18 L38 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.35"/></svg>
+    </div>
+    <div class="b1-content">
+      <div class="b1-title">Sense<em>Spark</em></div>
+      <div class="b1-body"><strong>Feel it, then write it.</strong> Tap into all five senses to write lyrics that make listeners feel something real. A sensory prompt engine for songwriters.</div>
+    </div>
+    <div class="b1-cta">Spark a sense</div>
+  </a>
+
+  <!-- RhymeForge -->
+  <a href="../rhymeforge/" class="b1 b1--rf">
+    <div class="b1-icon">
+      <svg viewBox="0 0 48 48" fill="none"><path d="M13 14h12M13 21h9M13 28h12M13 35h8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M28 14 C28 14 36 16 36 21 C36 26 28 28 28 28 C28 28 36 30 36 35" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
+    </div>
+    <div class="b1-content">
+      <div class="b1-title">Rhyme<em>Forge</em></div>
+      <div class="b1-body"><strong>From chords to words.</strong> Find the perfect rhyme for your lyrics with five types of rhyme matching, built for songwriters.</div>
+    </div>
+    <div class="b1-cta">Start writing lyrics</div>
+  </a>
+
+  <!-- CollisionLab -->
+  <a href="../collisionlab/" class="b1 b1--cl">
+    <div class="b1-icon">
+      <svg viewBox="0 0 48 48" fill="none"><path d="M10 24 L19 24" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M15 20 L19 24 L15 28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M38 24 L29 24" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M33 20 L29 24 L33 28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 17 V15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M24 33 V31" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M20 19 L18.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M28 29 L29.5 30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M28 19 L29.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 29 L18.5 30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <div class="b1-content">
+      <div class="b1-title">Collision<em>Lab</em></div>
+      <div class="b1-body"><strong>Where ideas crash and art happens.</strong> Smash unexpected concepts together to forge original metaphors and imagery for your lyrics.</div>
+    </div>
+    <div class="b1-cta">Start colliding</div>
+  </a>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MOBILE TILE GRID (hidden on desktop, visible on mobile)
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="mobile-grid">
+
+  <a href="../morningpages/" class="app-card" style="--app-color: #e4a74b">
+    <div class="app-icon">
+      <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="19" r="5" stroke="currentColor" stroke-width="2.5" fill="none"/><path d="M24 11 V13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M17 14 L18.5 15.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M31 14 L29.5 15.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M14 19 H16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M32 19 H34" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="12" y1="26" x2="36" y2="26" stroke="currentColor" stroke-width="2" opacity="0.4"/><line x1="14" y1="31" x2="34" y2="31" stroke="currentColor" stroke-width="2" opacity="0.3"/><line x1="16" y1="36" x2="32" y2="36" stroke="currentColor" stroke-width="2" opacity="0.2"/></svg>
+    </div>
+    <h3>Morning Pages</h3>
+    <p class="app-tagline">Stream-of-consciousness writing to clear the mental fog and unlock creativity before you start writing songs.</p>
+    <div class="app-cta">Start writing <span>&rarr;</span></div>
+  </a>
+
+  <a href="../" class="app-card" style="--app-color: #84cc16">
+    <div class="app-icon">
+      <svg viewBox="0 0 48 48" fill="none"><path d="M24 38 C24 38 15 26 15 18 C15 12 19 9 24 9 C29 9 33 12 33 18 C33 26 24 38 24 38Z" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linejoin="round"/><line x1="17.5" y1="17" x2="30.5" y2="17" stroke="currentColor" stroke-width="1.8" opacity="0.45"/><line x1="16.5" y1="22" x2="31.5" y2="22" stroke="currentColor" stroke-width="1.8" opacity="0.45"/><line x1="18.5" y1="27" x2="29.5" y2="27" stroke="currentColor" stroke-width="1.8" opacity="0.45"/></svg>
+    </div>
+    <h3>Undercover <em>Zest</em></h3>
+    <p class="app-tagline">Build chord progressions, find keys, and master music theory — the guitar songwriting companion.</p>
+    <div class="app-cta">Start building chords <span>&rarr;</span></div>
+  </a>
+
+  <a href="../sensespark/" class="app-card" style="--app-color: #E8453C">
+    <div class="app-icon">
+      <svg viewBox="0 0 48 48" fill="none"><ellipse cx="24" cy="24" rx="12" ry="8" stroke="currentColor" stroke-width="2.5" fill="none"/><circle cx="24" cy="24" r="3.5" stroke="currentColor" stroke-width="2.2" fill="none"/><circle cx="24" cy="24" r="1.2" fill="currentColor"/><path d="M24 14 L24 9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity="0.5"/><path d="M19 15 L16 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.45"/><path d="M29 15 L32 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.45"/><path d="M14.5 18 L10 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.35"/><path d="M33.5 18 L38 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.35"/></svg>
+    </div>
+    <h3>Sense<em>Spark</em></h3>
+    <p class="app-tagline">Tap into all five senses to write lyrics that make listeners feel something real.</p>
+    <div class="app-cta">Spark a sense <span>&rarr;</span></div>
+  </a>
+
+  <a href="../rhymeforge/" class="app-card" style="--app-color: #d4a853">
+    <div class="app-icon">
+      <svg viewBox="0 0 48 48" fill="none"><path d="M13 14h12M13 21h9M13 28h12M13 35h8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M28 14 C28 14 36 16 36 21 C36 26 28 28 28 28 C28 28 36 30 36 35" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
+    </div>
+    <h3>Rhyme<em>Forge</em></h3>
+    <p class="app-tagline">Five types of rhyme matching — perfect, family, additive, assonance, and consonance — built for songwriters.</p>
+    <div class="app-cta">Start rhyming <span>&rarr;</span></div>
+  </a>
+
+  <a href="../collisionlab/" class="app-card" style="--app-color: #a78bfa">
+    <div class="app-icon">
+      <svg viewBox="0 0 48 48" fill="none"><path d="M10 24 L19 24" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M15 20 L19 24 L15 28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M38 24 L29 24" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M33 20 L29 24 L33 28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 17 V15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M24 33 V31" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M20 19 L18.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M28 29 L29.5 30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M28 19 L29.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 29 L18.5 30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <h3>Collision<em>Lab</em></h3>
+    <p class="app-tagline">Smash unexpected ideas together to forge fresh metaphors and imagery for your lyrics.</p>
+    <div class="app-cta">Start colliding <span>&rarr;</span></div>
+  </a>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     STATIC SEO CONTENT — crawlable description of the full suite
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="uz-about" style="max-width:720px;margin:64px auto 0;padding:0 28px 48px;font-family:'Outfit',sans-serif;line-height:1.75;">
+  <h2 style="font-size:1.35rem;font-weight:600;color:#d4a853;margin-bottom:16px;letter-spacing:-0.01em;">Free Songwriting Tools — Built for Musicians</h2>
+  <p style="font-size:0.95rem;color:#a0a0a8;margin-bottom:14px;">Undercover Zest is a suite of five free, browser-based tools designed to help songwriters at every stage of the creative process — from the first spark of an idea to polished lyrics and chord progressions. No accounts, no downloads, no paywalls. Just open a tool and start creating.</p>
+
+  <p style="font-size:0.95rem;color:#a0a0a8;margin-bottom:14px;"><strong style="color:#ebe8e2;">Undercover Zest</strong> is an interactive chord progression builder. Pick a key, click chords to build a progression, then hear it played back. Visualise scales across the fretboard, use the built-in tuner, and explore music theory — all designed around the way guitarists actually write songs.</p>
+
+  <p style="font-size:0.95rem;color:#a0a0a8;margin-bottom:14px;"><strong style="color:#ebe8e2;">RhymeForge</strong> is a rhyme engine built specifically for lyricists. Search over 54,000 words across five rhyme types — perfect rhymes, family rhymes, additive rhymes, assonance, and consonance. It includes a built-in lyrics pad so you can write and search side by side, and export your work as a PDF.</p>
+
+  <p style="font-size:0.95rem;color:#a0a0a8;margin-bottom:14px;"><strong style="color:#ebe8e2;">CollisionLab</strong> is a metaphor and simile generator. It smashes two unexpected concepts together and helps you discover fresh imagery for your lyrics. When you're stuck reaching for the same tired phrases, CollisionLab gives you something you'd never have thought of on your own.</p>
+
+  <p style="font-size:0.95rem;color:#a0a0a8;margin-bottom:14px;"><strong style="color:#ebe8e2;">Morning Pages</strong> is a distraction-free writing journal inspired by Julia Cameron's morning pages practice. Open it first thing, write freely for three pages, and build a daily creative habit. It tracks your streak, saves your entries locally, and stays out of your way.</p>
+
+  <p style="font-size:0.95rem;color:#a0a0a8;margin-bottom:14px;"><strong style="color:#ebe8e2;">SenseSpark</strong> is a sensory writing prompt generator. It prompts you with vivid details across sight, sound, touch, taste, smell, and more — helping you write lyrics grounded in real, felt experience rather than abstract ideas. Tap a sense, get a spark, and write something that makes people feel.</p>
+
+  <p style="font-size:0.95rem;color:#a0a0a8;">Every tool is free, works in any modern browser, and stores your data locally on your device. Built by a songwriter, for songwriters.</p>
+</section>
+
+<script src="uz-footer.js"></script>
+
+</body>
+</html>
