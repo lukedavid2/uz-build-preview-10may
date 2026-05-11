@@ -5308,6 +5308,18 @@ body.popout-mode .panel-close-btn { display: none !important; }
     border-color: #d4a853;
     color: #e4bc6c;
 }
+/* "Load from RhymeForge…" — same shape, visually distinct so it doesn't
+   look like a section-name marker */
+.lp-import-rf-btn {
+    margin-left: auto;
+    border-style: dashed !important;
+    background: rgba(212,168,83,0.08) !important;
+    color: #e4bc6c !important;
+}
+.lp-import-rf-btn:hover {
+    background: rgba(212,168,83,0.22) !important;
+    border-style: solid !important;
+}
 
 /* Push main content right when lyrics panel is open */
 body.lyrics-panel-open.lp-size-half .container { margin-left: 50vw; }

@@ -7124,10 +7124,9 @@ function _uzShowImportToast(msg) {
     toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 3200);
 }
 
-window.addEventListener('message', e => {
-    const data = e && e.data;
-    if (!data || data.type !== 'rhymeforge-import-to-uz') return;
-    const payload = data.payload || {};
+// Shared apply function — used by both the iframe postMessage handler and the
+// native "Load from RhymeForge…" button on the Lyrics tab.
+function _uzApplyRhymeforgeImport(payload) {
     const incomingText = (payload.text || '').replace(/\r\n/g, '\n').trim();
     if (!incomingText) {
         _uzShowImportToast('Nothing to import — the file had no text.');
@@ -7145,11 +7144,9 @@ window.addEventListener('message', e => {
         state.songName = String(payload.title).trim();
     }
 
-    // Make sure freewrite view is the active one so the import is visible.
     if (state.lyrics.currentView !== 'freewrite') state.lyrics.currentView = 'freewrite';
     if (state.lyrics.currentTab !== 'lyrics') state.lyrics.currentTab = 'lyrics';
 
-    // Persist + re-render. Also update the live <textarea> so user sees it instantly.
     try { saveStateToLocalStorage(); } catch (err) {}
     try {
         if (typeof render === 'function') render();
@@ -7157,7 +7154,6 @@ window.addEventListener('message', e => {
         const ta = document.getElementById('lpFreewriteArea');
         if (ta) {
             ta.value = state.lyrics.freeText;
-            // Scroll to the bottom so the imported text is visible.
             ta.scrollTop = ta.scrollHeight;
         }
     } catch (err) {}
@@ -7165,7 +7161,130 @@ window.addEventListener('message', e => {
     const fieldLabel = payload.field === 'scratch' ? 'scratch'
         : payload.field === 'both' ? 'scratch + poem' : 'poem';
     _uzShowImportToast('Imported ' + fieldLabel + (payload.title ? ' from "' + payload.title + '"' : '') + ' into freewrite.');
+}
+
+window.addEventListener('message', e => {
+    const data = e && e.data;
+    if (!data || data.type !== 'rhymeforge-import-to-uz') return;
+    _uzApplyRhymeforgeImport(data.payload || {});
 });
+
+// Native "Load from RhymeForge…" button (on the Lyrics tab in UZ itself).
+// Opens a .rhymeforge.json, shows the same field picker, then calls the
+// shared apply function above. Bypasses the iframe entirely.
+function _uzOpenImportPicker() {
+    async function readAndPrompt(file) {
+        try {
+            const text = await file.text();
+            const parsed = JSON.parse(text);
+            if (!parsed || parsed.rhymeforge !== true) {
+                _uzShowImportToast('Not a RhymeForge file.');
+                return;
+            }
+            _uzShowImportFieldPicker(parsed);
+        } catch (e) {
+            _uzShowImportToast('Could not read the file.');
+        }
+    }
+
+    if (window.showOpenFilePicker) {
+        (async () => {
+            try {
+                const [handle] = await window.showOpenFilePicker({
+                    types: [{ description: 'RhymeForge Project', accept: { 'application/json': ['.json'] } }],
+                    multiple: false
+                });
+                const file = await handle.getFile();
+                await readAndPrompt(file);
+            } catch (e) {
+                if (e.name !== 'AbortError') {
+                    // Fall through to <input type=file> on platforms that don't support FSA properly
+                    _uzFallbackInput(readAndPrompt);
+                }
+            }
+        })();
+    } else {
+        _uzFallbackInput(readAndPrompt);
+    }
+}
+function _uzFallbackInput(onFile) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        if (file) onFile(file);
+    });
+    input.click();
+}
+function _uzShowImportFieldPicker(parsed) {
+    let modal = document.getElementById('uzNativeImportModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'uzNativeImportModal';
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);'
+            + 'display:flex;align-items:center;justify-content:center;z-index:99998;padding:20px;';
+        modal.innerHTML = `
+          <div role="dialog" aria-modal="true" style="background:#fffbf0;color:#1a1410;border:1px solid #d4a745;border-radius:14px;max-width:520px;width:100%;padding:24px;box-shadow:0 12px 36px rgba(0,0,0,0.4);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+            <h3 style="margin:0 0 0.4rem;font-size:1.05rem;color:#8a5a00;font-family:'Playfair Display',serif;">Import lyrics from RhymeForge</h3>
+            <div id="uzNativeImportMeta" style="margin:0 0 0.6rem;font-size:0.92rem;"></div>
+            <p style="margin:0 0 1rem;font-size:0.82rem;color:#776;line-height:1.5;">Pick what to send into your freewrite. It will be appended below any lyrics already there.</p>
+            <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1.1rem;">
+              <label style="display:flex;gap:0.55rem;align-items:flex-start;padding:0.5rem 0.7rem;border:1px solid #e5d6a8;border-radius:8px;cursor:pointer;font-size:0.85rem;line-height:1.4;">
+                <input type="radio" name="uzNativeImportField" value="poem" checked style="margin-top:0.2rem;accent-color:#c8a04a;">
+                <div><strong>Polished poem only</strong> <span style="color:#998;">— the "Your Poem / Lyrics" field</span></div>
+              </label>
+              <label style="display:flex;gap:0.55rem;align-items:flex-start;padding:0.5rem 0.7rem;border:1px solid #e5d6a8;border-radius:8px;cursor:pointer;font-size:0.85rem;line-height:1.4;">
+                <input type="radio" name="uzNativeImportField" value="scratch" style="margin-top:0.2rem;accent-color:#c8a04a;">
+                <div><strong>Scratch only</strong> <span style="color:#998;">— raw scratchpad ideas</span></div>
+              </label>
+              <label style="display:flex;gap:0.55rem;align-items:flex-start;padding:0.5rem 0.7rem;border:1px solid #e5d6a8;border-radius:8px;cursor:pointer;font-size:0.85rem;line-height:1.4;">
+                <input type="radio" name="uzNativeImportField" value="both" style="margin-top:0.2rem;accent-color:#c8a04a;">
+                <div><strong>Both, stitched</strong> <span style="color:#998;">— scratch above poem with a divider</span></div>
+              </label>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
+              <button type="button" id="uzNativeImportCancel" style="padding:0.5rem 1rem;border:1px solid #ccc;background:#fff;border-radius:6px;cursor:pointer;font-family:inherit;">Cancel</button>
+              <button type="button" id="uzNativeImportConfirm" style="padding:0.5rem 1rem;border:1px solid #c8a04a;background:#c8a04a;color:#fff;border-radius:6px;cursor:pointer;font-weight:600;font-family:inherit;">Send to freewrite</button>
+            </div>
+          </div>
+        `;
+        modal.addEventListener('click', e => {
+            if (e.target === modal) modal.style.display = 'none';
+        });
+        document.body.appendChild(modal);
+    }
+
+    const meta = modal.querySelector('#uzNativeImportMeta');
+    const savedDate = parsed.savedAt ? new Date(parsed.savedAt).toLocaleString() : '';
+    meta.innerHTML = '<strong>' + escapeHtml(parsed.title || 'Untitled') + '</strong>'
+                   + (savedDate ? ' <span style="color:#998;font-weight:400;">— saved ' + escapeHtml(savedDate) + '</span>' : '');
+
+    const cancel = () => { modal.style.display = 'none'; };
+    const confirm = () => {
+        const field = (modal.querySelector('input[name="uzNativeImportField"]:checked') || {}).value || 'poem';
+        const poem = (parsed.poem || '').trim();
+        const scratch = (parsed.scratch || '').trim();
+        let text;
+        if (field === 'poem') text = poem;
+        else if (field === 'scratch') text = scratch;
+        else text = (scratch ? '--- scratch notes ---\n' + scratch + '\n\n' : '') + poem;
+        cancel();
+        _uzApplyRhymeforgeImport({ title: parsed.title || '', text, field, savedAt: parsed.savedAt || null });
+    };
+
+    const cancelBtn = modal.querySelector('#uzNativeImportCancel');
+    const confirmBtn = modal.querySelector('#uzNativeImportConfirm');
+    // Replace handlers via cloneNode to avoid stacking listeners across opens
+    const newCancel = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+    newCancel.addEventListener('click', cancel);
+    const newConfirm = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+    newConfirm.addEventListener('click', confirm);
+
+    modal.style.display = 'flex';
+}
 
 let lpActiveChordPicker = null; // track open chord picker
 
@@ -7313,6 +7432,7 @@ function renderLyricsPanel() {
                     const name = pl.name || 'Line ' + (i + 1);
                     return `<button class="lp-insert-section-btn" data-section-name="${escapeHtml(name)}">${escapeHtml(name)}</button>`;
                 }).join('')}
+                <button class="lp-insert-section-btn lp-import-rf-btn" id="lpImportRfBtn" title="Load a .rhymeforge.json file and append its text to your freewrite">📥 Load from RhymeForge…</button>
             </div>
             <textarea class="lp-freewrite-area" id="lpFreewriteArea" placeholder="Write your lyrics here then click a section button above to insert a marker...\n\nExample:\n[Verse]\nWalking down the street today\nFeeling all the words to say\n\n[Chorus]\nThis is where the song begins">${escapeHtml(lyr.freeText || '')}</textarea>
             <div class="lp-freewrite-hint">Click a section button to insert a <strong>[Section]</strong> marker at the cursor. Sections will auto-link to their matching progression line.</div>
@@ -7571,6 +7691,14 @@ document.addEventListener('click', e => {
     if (viewBtn) {
         state.lyrics.currentView = viewBtn.dataset.lpView;
         renderLyricsPanel();
+        return;
+    }
+
+    // Native "Load from RhymeForge…" button (re-uses the .lp-insert-section-btn
+    // class for styling but has no section name — short-circuit before the
+    // marker-insertion handler below).
+    if (e.target.closest('#lpImportRfBtn')) {
+        _uzOpenImportPicker();
         return;
     }
 
