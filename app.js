@@ -7432,7 +7432,7 @@ function renderLyricsPanel() {
                     const name = pl.name || 'Line ' + (i + 1);
                     return `<button class="lp-insert-section-btn" data-section-name="${escapeHtml(name)}">${escapeHtml(name)}</button>`;
                 }).join('')}
-                <button class="lp-insert-section-btn lp-import-rf-btn" id="lpImportRfBtn" title="Load a .rhymeforge.json file and append its text to your freewrite">📥 Load from RhymeForge…</button>
+                <button class="lp-insert-section-btn lp-import-rf-btn" id="lpImportRfBtn" title="Load a .rhymeforge.json file and append its text to your freewrite">Load RhymeForge file</button>
             </div>
             <textarea class="lp-freewrite-area" id="lpFreewriteArea" placeholder="Write your lyrics here then click a section button above to insert a marker...\n\nExample:\n[Verse]\nWalking down the street today\nFeeling all the words to say\n\n[Chorus]\nThis is where the song begins">${escapeHtml(lyr.freeText || '')}</textarea>
             <div class="lp-freewrite-hint">Click a section button to insert a <strong>[Section]</strong> marker at the cursor. Sections will auto-link to their matching progression line.</div>
