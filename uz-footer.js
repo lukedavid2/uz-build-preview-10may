@@ -1,6 +1,6 @@
 /**
  * Undercover Zest Suite — Footer  (uz-footer.js)
- * 2026-05-12 mobile UX pass 5.
+ * 2026-05-12 mobile UX pass 6.
  */
 (function () {
   'use strict';
@@ -189,21 +189,26 @@
       });
     }
 
-    // ── Lyrics panel: inline-style width (bulletproof) ────────────
-    // Pass-5: don't try to win the CSS cascade. Just set width
-    // inline with !important when toggling — that beats every
-    // external rule regardless of specificity quirks.
+    // ── Lyrics panel: own the size class AND inline-width ─────────
+    // The "Full" pill removes app.js's .size-half class so the panel
+    // gets the .lyrics-panel.open rule (100vw). The "½" pill keeps
+    // .size-half on AND adds .uz-user-half + inline 50vw !important.
     var lyricsPanel = document.getElementById('lyricsPanel');
 
     function setPanelToHalf() {
       if (!lyricsPanel) return;
       lyricsPanel.classList.add('uz-user-half');
+      lyricsPanel.classList.add('size-half');
+      lyricsPanel.classList.remove('size-third', 'size-quarter');
       lyricsPanel.style.setProperty('width', '50vw', 'important');
       syncSizePillActiveState();
     }
     function setPanelToFull() {
       if (!lyricsPanel) return;
       lyricsPanel.classList.remove('uz-user-half');
+      // Critical: strip app.js's size-* classes so .lyrics-panel.open
+      // (our 100vw rule) wins.
+      lyricsPanel.classList.remove('size-half', 'size-third', 'size-quarter');
       lyricsPanel.style.setProperty('width', '100vw', 'important');
       syncSizePillActiveState();
     }
@@ -235,11 +240,10 @@
       });
       if (closeBtn) ctrls.insertBefore(pill, closeBtn);
       else ctrls.appendChild(pill);
-      // Initial state: full
       setPanelToFull();
     }
 
-    // Tap the ½ pill → opt into half-mode (inline 50vw !important)
+    // Tap the ½ pill → opt into half-mode
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.classList) return;
@@ -251,7 +255,6 @@
     }, true);
 
     // When the lyrics tab is tapped to OPEN the panel, force full
-    // mode (overrides app.js's .size-half default).
     var lyricsTab = document.getElementById('lyricsPanelTab');
     if (lyricsTab) {
       lyricsTab.addEventListener('click', function () {
@@ -402,12 +405,8 @@
     'body:has(#welcomeModal:not(.hidden)) [class*="floatingchat"],',
     'body:has(#welcomeModal:not(.hidden)) [id^="kofi-"] { display: none !important; }',
     '',
-    '/* Lyrics panel mobile — width is now set inline by JS as the',
-    '   bulletproof source of truth. CSS here just provides initial',
-    '   defaults and the OTHER layout (height, controls position). */',
     '@media (max-width: 640px) {',
     '  .lyrics-panel.open { width: 100vw !important; }',
-    '  /* Hide ¼ and ⅓ pills — user only wants ½ and Full */',
     '  .lyrics-panel .lp-size-btn[data-lp-size="quarter"],',
     '  .lyrics-panel .lp-size-btn[data-lp-size="third"] { display: none !important; }',
     '  .lyrics-panel { height: calc(var(--uz-vh) - var(--uz-rail-h, 52px)) !important; }',
@@ -454,7 +453,6 @@
     '  .uz-mobile-loop-pill:active { transform: scale(0.96); }',
     '}',
     '',
-    '/* Modal-Interchange equal-height + bordered notes box */',
     '@media (max-width: 640px) {',
     '  .chord-row.modal, .chord-row {',
     '    gap: 14px 18px !important;',
@@ -483,7 +481,6 @@
     '  }',
     '}',
     '',
-    '/* Shapes menu item (lives in #toolButtons) */',
     '.uz-shapes-menu-item {',
     '  display: block; width: 100%; text-align: left;',
     '  padding: 8px 12px; margin: 2px 0;',
@@ -497,7 +494,6 @@
     '.uz-shapes-menu-item:hover { background: rgba(212,168,83,0.15); border-color: #d4a853; }',
     '.uz-shapes-menu-item:active { transform: scale(0.98); }',
     '',
-    '/* Compact: shrink the mini diagrams in the progression row */',
     'body.uz-shapes-compact .mini-chord-svg {',
     '  width: 46px !important;',
     '  height: 64px !important;',
@@ -506,7 +502,6 @@
     '  padding: 6px 8px !important;',
     '  gap: 2px !important;',
     '}',
-    '/* Names-only: hide mini diagrams, bump chord name */',
     'body.uz-shapes-names .mini-chord-svg { display: none !important; }',
     'body.uz-shapes-names .progression-chord .chord-name { font-size: 1.05rem; padding: 4px 6px; }',
     '',
