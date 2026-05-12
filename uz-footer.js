@@ -1,6 +1,6 @@
 /**
  * Undercover Zest Suite — Footer  (uz-footer.js)
- * 2026-05-12 mobile UX pass 6.
+ * 2026-05-12 mobile UX pass 7.
  */
 (function () {
   'use strict';
@@ -189,29 +189,39 @@
       });
     }
 
-    // ── Lyrics panel: own the size class AND inline-width ─────────
-    // The "Full" pill removes app.js's .size-half class so the panel
-    // gets the .lyrics-panel.open rule (100vw). The "½" pill keeps
-    // .size-half on AND adds .uz-user-half + inline 50vw !important.
+    // ── Lyrics panel size: bypass transition, set inline width ────
+    // The panel has CSS `transition: width 0.3s`. App.js fires its own
+    // size handler on lp-size-btn clicks, and the interaction between
+    // that + our handler + the transition was leaving the panel stuck
+    // at the "from" width. Fix: disable transition during the change.
     var lyricsPanel = document.getElementById('lyricsPanel');
 
-    function setPanelToHalf() {
+    function applyPanelWidth(width50) {
       if (!lyricsPanel) return;
-      lyricsPanel.classList.add('uz-user-half');
-      lyricsPanel.classList.add('size-half');
-      lyricsPanel.classList.remove('size-third', 'size-quarter');
-      lyricsPanel.style.setProperty('width', '50vw', 'important');
+      lyricsPanel.style.setProperty('transition', 'none', 'important');
+      if (width50) {
+        lyricsPanel.classList.add('uz-user-half');
+        lyricsPanel.classList.add('size-half');
+        lyricsPanel.classList.remove('size-third', 'size-quarter');
+        lyricsPanel.style.setProperty('width', '50vw', 'important');
+      } else {
+        lyricsPanel.classList.remove('uz-user-half');
+        lyricsPanel.classList.remove('size-half', 'size-third', 'size-quarter');
+        lyricsPanel.style.setProperty('width', '100vw', 'important');
+      }
+      // Restore the transition on the next frame so subsequent
+      // app.js-driven animations (e.g. opening / closing) still
+      // animate smoothly.
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          if (lyricsPanel) lyricsPanel.style.removeProperty('transition');
+        });
+      });
       syncSizePillActiveState();
     }
-    function setPanelToFull() {
-      if (!lyricsPanel) return;
-      lyricsPanel.classList.remove('uz-user-half');
-      // Critical: strip app.js's size-* classes so .lyrics-panel.open
-      // (our 100vw rule) wins.
-      lyricsPanel.classList.remove('size-half', 'size-third', 'size-quarter');
-      lyricsPanel.style.setProperty('width', '100vw', 'important');
-      syncSizePillActiveState();
-    }
+    function setPanelToHalf() { applyPanelWidth(true); }
+    function setPanelToFull() { applyPanelWidth(false); }
+
     function syncSizePillActiveState() {
       var ctrls = document.querySelector('.lp-tabs-controls');
       if (!ctrls || !lyricsPanel) return;
@@ -243,7 +253,8 @@
       setPanelToFull();
     }
 
-    // Tap the ½ pill → opt into half-mode
+    // Tap the ½ pill → opt into half-mode. Use capture phase so we
+    // run before app.js's delegated handler.
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.classList) return;
