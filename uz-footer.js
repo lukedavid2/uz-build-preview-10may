@@ -1,6 +1,6 @@
 /**
  * Undercover Zest Suite — Footer  (uz-footer.js)
- * See repo for full docs. 2026-05-12 mobile UX pass + hotfix.
+ * 2026-05-12 mobile UX pass 3 (fixes to pass 2 regressions).
  */
 (function () {
   'use strict';
@@ -58,7 +58,7 @@
   container.innerHTML = footerHTML;
   document.body.appendChild(container.firstChild);
 
-  // ── Ko-fi widget (deferred until welcome modal closes) ──
+  // ── Ko-fi widget (deferred until welcome/intro modal closes) ──
   var isMorningPages = activeApp === 'morning' ||
     window.location.href.toLowerCase().indexOf('morningpages') !== -1;
 
@@ -136,9 +136,43 @@
   }
 
   // ────────────────────────────────────────────────────────────────
-  // ── Mobile UX helpers (pass 2 with hotfix 2026-05-12)
+  // ── Mobile UX helpers (pass 3 — 2026-05-12)
   // ────────────────────────────────────────────────────────────────
   function isMobileWidth() { return window.innerWidth <= 640; }
+
+  // SHAPE_STATES is at module scope so the Tools-menu button (built
+  // before mobile setup runs) can share state with the mobile hook.
+  var SHAPE_STATES = ['', 'uz-shapes-compact', 'uz-shapes-names'];
+  var SHAPE_LABEL  = ['Shapes: Full', 'Shapes: Compact', 'Shapes: Names only'];
+  var shapeIdx = 0;
+  try { shapeIdx = parseInt(localStorage.getItem('uz-shapes-state') || '0', 10) || 0; } catch (e) {}
+  function applyShapeState(idx) {
+    if (!document.body) return shapeIdx;
+    idx = ((idx % SHAPE_STATES.length) + SHAPE_STATES.length) % SHAPE_STATES.length;
+    SHAPE_STATES.forEach(function (cls) { if (cls) document.body.classList.remove(cls); });
+    if (SHAPE_STATES[idx]) document.body.classList.add(SHAPE_STATES[idx]);
+    try { localStorage.setItem('uz-shapes-state', String(idx)); } catch (e) {}
+    var btn = document.getElementById('uzShapesMenuItem');
+    if (btn) btn.textContent = '🎸 ' + SHAPE_LABEL[idx] + ' ▾';
+    shapeIdx = idx;
+    return idx;
+  }
+
+  function injectShapesMenuItem() {
+    if (document.getElementById('uzShapesMenuItem')) return;
+    var menu = document.getElementById('toolButtons');
+    if (!menu) return;
+    var btn = document.createElement('button');
+    btn.id = 'uzShapesMenuItem';
+    btn.type = 'button';
+    btn.className = 'uz-shapes-menu-item';
+    btn.textContent = '🎸 ' + SHAPE_LABEL[shapeIdx] + ' ▾';
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      applyShapeState(shapeIdx + 1);
+    });
+    menu.appendChild(btn);
+  }
 
   function setupMobileEnhancements() {
     if (!isMobileWidth()) return;
@@ -154,15 +188,69 @@
       });
     }
 
-    // ── 18. Loop / repeat collapse — HOTFIX-safe version ──────────
-    // Observer is now narrowly scoped to #progressionArea (where the
-    // line-repeats live), disconnects during the callback, and only
-    // writes textContent when it actually changes. This prevents the
-    // infinite-mutation loop that froze the page.
+    // ── 29 (fix). Lyrics panel: default FULL on mobile, only ½ and Full pills ──
+    // app.js attaches .size-half by default → strip it on tap so my
+    // .open { width: 100vw } rule wins. Also inject a "Full" pill so
+    // the user can toggle back from ½ to full.
+    var lyricsTab = document.getElementById('lyricsPanelTab');
+    var lyricsPanel = document.getElementById('lyricsPanel');
+    if (lyricsTab && lyricsPanel) {
+      lyricsTab.addEventListener('click', function () {
+        // Defer to next frame so app.js gets to add classes first
+        requestAnimationFrame(function () {
+          lyricsPanel.classList.remove('size-half', 'size-third', 'size-quarter');
+        });
+      }, true);
+    }
+    // Inject "Full" pill into the .lp-tabs-controls row (mirror ½ style)
+    function ensureFullPill() {
+      var ctrls = document.querySelector('.lp-tabs-controls');
+      if (!ctrls || document.getElementById('lpFullSizeBtn')) return;
+      // Find the close button so we insert BEFORE it
+      var closeBtn = ctrls.querySelector('.lp-close-btn');
+      var pill = document.createElement('button');
+      pill.id = 'lpFullSizeBtn';
+      pill.type = 'button';
+      pill.className = 'lp-size-btn lp-size-full';
+      pill.setAttribute('aria-label', 'Full screen lyrics panel');
+      pill.textContent = '▭';
+      pill.title = 'Full screen';
+      pill.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (!lyricsPanel) return;
+        lyricsPanel.classList.remove('size-half', 'size-third', 'size-quarter');
+        // Update active state on size pills
+        ctrls.querySelectorAll('.lp-size-btn').forEach(function (b) { b.classList.remove('active'); });
+        pill.classList.add('active');
+      });
+      if (closeBtn) ctrls.insertBefore(pill, closeBtn);
+      else ctrls.appendChild(pill);
+      // Mark the Full pill active on initial open (since default is full)
+      ctrls.querySelectorAll('.lp-size-btn').forEach(function (b) { b.classList.remove('active'); });
+      pill.classList.add('active');
+    }
+    setTimeout(ensureFullPill, 500);
+    // Also keep the half pill toggling correctly — when user taps ½,
+    // app.js may not realize we removed size-half. Re-add it.
+    document.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.classList || !t.classList.contains('lp-size-btn')) return;
+      if (t.id === 'lpFullSizeBtn') return;
+      if (lyricsPanel && t.dataset && t.dataset.lpSize === 'half') {
+        requestAnimationFrame(function () {
+          lyricsPanel.classList.add('size-half');
+          var ctrls = document.querySelector('.lp-tabs-controls');
+          if (ctrls) ctrls.querySelectorAll('.lp-size-btn').forEach(function (b) {
+            b.classList.toggle('active', b === t);
+          });
+        });
+      }
+    }, true);
+
+    // ── 18. Loop / repeat collapse — pass-2 hotfixed version ──────
     var looperObs = null;
     var looperDebounce = null;
     function rebuildLooperPills() {
-      // Disconnect before mutating so our own writes do not retrigger
       if (looperObs) looperObs.disconnect();
       try {
         var groups = document.querySelectorAll('.line-repeats');
@@ -183,14 +271,12 @@
             });
             g.insertBefore(pill, g.firstChild);
           }
-          // Sync the pill label to the active button — but only if changed
           var activeBtn = g.querySelector('.repeat-btn.active');
           var pillEl = g.querySelector('.uz-mobile-loop-pill');
           if (activeBtn && pillEl) {
             var want = '×' + activeBtn.textContent.trim() + ' ▾';
             if (pillEl.textContent !== want) pillEl.textContent = want;
           }
-          // Wire each inner repeat-btn to auto-collapse after click
           var btns = g.querySelectorAll('.repeat-btn');
           for (var j = 0; j < btns.length; j++) {
             var b = btns[j];
@@ -204,7 +290,6 @@
           }
         }
       } finally {
-        // Reconnect to a narrow target so we only react to progression renders
         var target = document.getElementById('progressionArea');
         if (looperObs && target) {
           looperObs.observe(target, { childList: true, subtree: true });
@@ -217,12 +302,9 @@
     }
     setTimeout(rebuildLooperPills, 500);
     looperObs = new MutationObserver(function (mutations) {
-      // Ignore mutations we caused ourselves — only react to real
-      // app.js progression re-renders (childList changes on line cards).
       for (var i = 0; i < mutations.length; i++) {
         var m = mutations[i];
         if (m.type === 'childList' && (m.addedNodes.length || m.removedNodes.length)) {
-          // Skip if the only change is adding our own pill
           var only = true;
           for (var k = 0; k < m.addedNodes.length; k++) {
             var n = m.addedNodes[k];
@@ -234,38 +316,18 @@
     });
     var progArea = document.getElementById('progressionArea');
     if (progArea) looperObs.observe(progArea, { childList: true, subtree: true });
-
-    // ── 20. Chord-shape size toggle pill ───────────────────────────
-    var SHAPE_STATES = ['', 'uz-shapes-compact', 'uz-shapes-names'];
-    var SHAPE_LABEL  = ['Shapes: Full', 'Shapes: Compact', 'Shapes: Names only'];
-    var stored = 0;
-    try { stored = parseInt(localStorage.getItem('uz-shapes-state') || '0', 10) || 0; } catch (e) {}
-    function applyShapeState(idx) {
-      idx = ((idx % SHAPE_STATES.length) + SHAPE_STATES.length) % SHAPE_STATES.length;
-      SHAPE_STATES.forEach(function (cls) { if (cls) body.classList.remove(cls); });
-      if (SHAPE_STATES[idx]) body.classList.add(SHAPE_STATES[idx]);
-      try { localStorage.setItem('uz-shapes-state', String(idx)); } catch (e) {}
-      var btn = document.getElementById('uzShapeToggle');
-      if (btn) btn.textContent = SHAPE_LABEL[idx];
-      return idx;
-    }
-    applyShapeState(stored);
-    function ensureShapeToggle() {
-      if (document.getElementById('uzShapeToggle')) return;
-      if (!document.getElementById('chordDetailPanel') && !document.querySelector('.progression-line')) return;
-      var btn = document.createElement('button');
-      btn.id = 'uzShapeToggle';
-      btn.type = 'button';
-      btn.className = 'uz-shape-toggle-btn';
-      btn.textContent = SHAPE_LABEL[stored];
-      btn.addEventListener('click', function () { stored = applyShapeState(stored + 1); });
-      document.body.appendChild(btn);
-    }
-    setTimeout(ensureShapeToggle, 800);
   }
+
+  function setupAlways() {
+    // Inject Shapes menu item on UZ root regardless of viewport (desktop too)
+    setTimeout(injectShapesMenuItem, 600);
+    applyShapeState(shapeIdx);
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupMobileEnhancements);
+    document.addEventListener('DOMContentLoaded', function () { setupAlways(); setupMobileEnhancements(); });
   } else {
+    setupAlways();
     setupMobileEnhancements();
   }
   window.addEventListener('resize', function () {
@@ -329,17 +391,25 @@
     'body:has(#welcomeModal:not(.hidden)) [class*="floatingchat"],',
     'body:has(#welcomeModal:not(.hidden)) [id^="kofi-"] { display: none !important; }',
     '',
+    '/* ── Lyrics panel: mobile default = full-width, only ½ and Full pills ── */',
     '@media (max-width: 640px) {',
     '  .lyrics-panel.open { width: 100vw !important; }',
     '  .lyrics-panel.size-half { width: 50vw !important; }',
-    '  .lyrics-panel.size-third, .lyrics-panel.size-quarter { width: 50vw !important; }',
+    '  /* Hide ¼ and ⅓ pills on mobile (user only wants ½ and Full) */',
+    '  .lyrics-panel .lp-size-btn[data-lp-size="quarter"],',
+    '  .lyrics-panel .lp-size-btn[data-lp-size="third"] { display: none !important; }',
     '  .lyrics-panel { height: calc(var(--uz-vh) - var(--uz-rail-h, 52px)) !important; }',
-    '  .lyrics-panel .lp-tabs { position: relative; padding-right: 50px; }',
+    '  .lyrics-panel .lp-tabs { position: relative; padding-right: 92px; }',
     '  .lyrics-panel .lp-tabs-controls {',
     '    position: absolute; top: 6px; right: 4px;',
-    '    margin-left: 0 !important; padding-right: 0 !important; gap: 2px;',
+    '    margin-left: 0 !important; padding-right: 0 !important; gap: 4px;',
     '  }',
-    '  .lyrics-panel .lp-size-btn { min-width: 28px; min-height: 28px; font-size: 11px; padding: 2px 6px; }',
+    '  .lyrics-panel .lp-size-btn {',
+    '    min-width: 32px; min-height: 32px;',
+    '    font-size: 12px; padding: 2px 6px;',
+    '  }',
+    '  .lyrics-panel .lp-size-btn.active { background: rgba(212,168,83,0.18); color: #d4a853; border-color: #d4a853; }',
+    '  #lpFullSizeBtn { font-size: 14px; }',
     '  .lyrics-panel .lp-close-btn {',
     '    min-width: 44px; min-height: 44px; font-size: 22px;',
     '    display: inline-flex; align-items: center; justify-content: center; padding: 0;',
@@ -372,6 +442,7 @@
     '  .uz-mobile-loop-pill:active { transform: scale(0.96); }',
     '}',
     '',
+    '/* ── 30 (fix). Modal-Interchange alignment using REAL .chord-tones class ── */',
     '@media (max-width: 640px) {',
     '  .chord-row.modal, .chord-row {',
     '    gap: 14px 18px !important;',
@@ -380,36 +451,61 @@
     '    flex-wrap: wrap !important; padding-inline: 10px;',
     '  }',
     '  .chord-row.modal .chord-wrapper, .chord-row .chord-wrapper {',
-    '    min-height: 100px;',
-    '    display: flex; flex-direction: column; align-items: center; gap: 6px;',
+    '    min-height: 130px;',
+    '    display: flex; flex-direction: column; align-items: center; gap: 4px;',
     '    margin: 0 !important; flex: 0 0 auto;',
     '  }',
-    '  .chord-row.modal .chord-box, .chord-row .chord-box { margin-bottom: 4px; flex-shrink: 0; }',
+    '  .chord-row.modal .chord-numeral, .chord-row .chord-numeral {',
+    '    min-height: 18px;',
+    '    line-height: 1;',
+    '  }',
+    '  .chord-row.modal .chord-box, .chord-row .chord-box {',
+    '    margin: 0 !important; flex-shrink: 0;',
+    '  }',
+    '  /* Wrap the R / 3 / 5 / note-name pills in a bordered group */',
+    '  .chord-row.modal .chord-wrapper .chord-tones,',
+    '  .chord-row .chord-wrapper .chord-tones {',
+    '    display: flex; flex-direction: row; flex-wrap: nowrap;',
+    '    gap: 2px;',
+    '    padding: 3px 5px;',
+    '    border: 1px solid rgba(255,255,255,0.10);',
+    '    border-radius: 4px;',
+    '    background: rgba(255,255,255,0.03);',
+    '    box-shadow: 0 1px 0 rgba(0,0,0,0.15);',
+    '  }',
+    '  body.light-mode .chord-row .chord-wrapper .chord-tones,',
+    '  body:not(.dark-mode) .chord-row .chord-wrapper .chord-tones {',
+    '    border-color: rgba(0,0,0,0.08); background: rgba(0,0,0,0.02);',
+    '  }',
     '}',
     '',
-    '@media (max-width: 640px) {',
-    '  .uz-shape-toggle-btn {',
-    '    position: fixed; right: 8px;',
-    '    bottom: calc(8px + env(safe-area-inset-bottom, 0px));',
-    '    z-index: 9000;',
-    '    background: rgba(26, 26, 40, 0.92);',
-    '    border: 1px solid rgba(212,168,83,0.6);',
-    '    color: #d4a853; padding: 8px 14px;',
-    '    border-radius: 999px; font-size: 12px; font-weight: 700;',
-    '    cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5);',
-    '    min-height: 38px;',
-    '  }',
-    '  .uz-shape-toggle-btn:active { transform: scale(0.96); }',
-    '  body.uz-shapes-compact .chord-diagrams {',
-    '    transform: scale(0.7); transform-origin: top left;',
-    '    margin-bottom: -25%;',
-    '  }',
-    '  body.uz-shapes-names .chord-diagrams { display: none !important; }',
-    '  body.uz-shapes-names .chord-name,',
-    '  body.uz-shapes-names .progression-line .chord-card .chord-name {',
-    '    font-size: 18px; padding: 8px 10px;',
-    '  }',
+    '/* ── 31 (fix). Shapes menu item lives in #toolButtons (not floating) ── */',
+    '/* Match the existing tool-buttons children style so it blends in */',
+    '.uz-shapes-menu-item {',
+    '  display: block; width: 100%; text-align: left;',
+    '  padding: 8px 12px; margin: 2px 0;',
+    '  background: rgba(212,168,83,0.08);',
+    '  border: 1px solid rgba(212,168,83,0.3);',
+    '  border-radius: 6px;',
+    '  color: #d4a853;',
+    '  font-family: "Outfit", sans-serif; font-size: 14px; font-weight: 600;',
+    '  cursor: pointer;',
     '}',
+    '.uz-shapes-menu-item:hover { background: rgba(212,168,83,0.15); border-color: #d4a853; }',
+    '.uz-shapes-menu-item:active { transform: scale(0.98); }',
+    '',
+    '/* Compact mode: shrink the in-line mini chord diagrams */',
+    'body.uz-shapes-compact .mini-chord-svg {',
+    '  width: 46px !important;',
+    '  height: 64px !important;',
+    '}',
+    'body.uz-shapes-compact .progression-chord {',
+    '  padding: 6px 8px !important;',
+    '  gap: 2px !important;',
+    '}',
+    '/* Names-only mode: hide diagrams entirely; bump chord name */',
+    'body.uz-shapes-names .mini-chord-svg { display: none !important; }',
+    'body.uz-shapes-names .progression-chord .chord-name { font-size: 1.05rem; padding: 4px 6px; }',
     '',
     '@media (pointer: coarse) {',
     '  .chord-detail-close, .chord-picker-close, .key-finder-close,',
