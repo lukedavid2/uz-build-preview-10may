@@ -1,6 +1,6 @@
 /**
  * Undercover Zest Suite — Footer  (uz-footer.js)
- * 2026-05-12 mobile UX pass 4.
+ * 2026-05-12 mobile UX pass 5.
  */
 (function () {
   'use strict';
@@ -189,11 +189,34 @@
       });
     }
 
-    // ── Lyrics panel: own the state, don't fight app.js ───────────
-    // On mobile, .lyrics-panel.open defaults to 100vw via CSS — the
-    // .size-half rule is NOT applied on mobile (see CSS). User opts
-    // into half-screen by tapping ½, which adds .uz-user-half.
+    // ── Lyrics panel: inline-style width (bulletproof) ────────────
+    // Pass-5: don't try to win the CSS cascade. Just set width
+    // inline with !important when toggling — that beats every
+    // external rule regardless of specificity quirks.
     var lyricsPanel = document.getElementById('lyricsPanel');
+
+    function setPanelToHalf() {
+      if (!lyricsPanel) return;
+      lyricsPanel.classList.add('uz-user-half');
+      lyricsPanel.style.setProperty('width', '50vw', 'important');
+      syncSizePillActiveState();
+    }
+    function setPanelToFull() {
+      if (!lyricsPanel) return;
+      lyricsPanel.classList.remove('uz-user-half');
+      lyricsPanel.style.setProperty('width', '100vw', 'important');
+      syncSizePillActiveState();
+    }
+    function syncSizePillActiveState() {
+      var ctrls = document.querySelector('.lp-tabs-controls');
+      if (!ctrls || !lyricsPanel) return;
+      var isHalf = lyricsPanel.classList.contains('uz-user-half');
+      ctrls.querySelectorAll('.lp-size-btn').forEach(function (b) {
+        b.classList.remove('active');
+        if (b.id === 'lpFullSizeBtn' && !isHalf) b.classList.add('active');
+        if (b.dataset && b.dataset.lpSize === 'half' && isHalf) b.classList.add('active');
+      });
+    }
 
     function ensureFullPill() {
       var ctrls = document.querySelector('.lp-tabs-controls');
@@ -208,38 +231,35 @@
       pill.title = 'Full screen';
       pill.addEventListener('click', function (e) {
         e.stopPropagation();
-        if (!lyricsPanel) return;
-        lyricsPanel.classList.remove('uz-user-half');
-        syncSizePillActiveState();
+        setPanelToFull();
       });
       if (closeBtn) ctrls.insertBefore(pill, closeBtn);
       else ctrls.appendChild(pill);
-      syncSizePillActiveState();
+      // Initial state: full
+      setPanelToFull();
     }
-    function syncSizePillActiveState() {
-      var ctrls = document.querySelector('.lp-tabs-controls');
-      if (!ctrls || !lyricsPanel) return;
-      var isHalf = lyricsPanel.classList.contains('uz-user-half');
-      ctrls.querySelectorAll('.lp-size-btn').forEach(function (b) {
-        b.classList.remove('active');
-        if (b.id === 'lpFullSizeBtn' && !isHalf) b.classList.add('active');
-        if (b.dataset && b.dataset.lpSize === 'half' && isHalf) b.classList.add('active');
-      });
-    }
-    setTimeout(ensureFullPill, 500);
-    // Listen for taps on the ½ pill → opt into half-mode
+
+    // Tap the ½ pill → opt into half-mode (inline 50vw !important)
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.classList) return;
       if (!t.classList.contains('lp-size-btn')) return;
-      if (t.id === 'lpFullSizeBtn') return; // handled above
+      if (t.id === 'lpFullSizeBtn') return;
       if (t.dataset && t.dataset.lpSize === 'half') {
-        if (lyricsPanel) {
-          lyricsPanel.classList.add('uz-user-half');
-          syncSizePillActiveState();
-        }
+        setPanelToHalf();
       }
     }, true);
+
+    // When the lyrics tab is tapped to OPEN the panel, force full
+    // mode (overrides app.js's .size-half default).
+    var lyricsTab = document.getElementById('lyricsPanelTab');
+    if (lyricsTab) {
+      lyricsTab.addEventListener('click', function () {
+        setTimeout(setPanelToFull, 50);
+      }, true);
+    }
+
+    setTimeout(ensureFullPill, 500);
 
     // ── Loop / repeat collapse — hotfixed observer ────────────────
     var looperObs = null;
@@ -382,15 +402,11 @@
     'body:has(#welcomeModal:not(.hidden)) [class*="floatingchat"],',
     'body:has(#welcomeModal:not(.hidden)) [id^="kofi-"] { display: none !important; }',
     '',
-    '/* ── Lyrics panel: own the width on mobile ──',
-    '   On mobile we ignore app.js\'s .size-half default and use our',
-    '   own .uz-user-half class as the half-mode opt-in. Default open',
-    '   is 100vw; user taps ½ to add .uz-user-half = 50vw. */',
+    '/* Lyrics panel mobile — width is now set inline by JS as the',
+    '   bulletproof source of truth. CSS here just provides initial',
+    '   defaults and the OTHER layout (height, controls position). */',
     '@media (max-width: 640px) {',
     '  .lyrics-panel.open { width: 100vw !important; }',
-    '  /* Override app.js\'s default .size-half on mobile back to 100vw */',
-    '  .lyrics-panel.open.size-half:not(.uz-user-half) { width: 100vw !important; }',
-    '  .lyrics-panel.open.uz-user-half { width: 50vw !important; }',
     '  /* Hide ¼ and ⅓ pills — user only wants ½ and Full */',
     '  .lyrics-panel .lp-size-btn[data-lp-size="quarter"],',
     '  .lyrics-panel .lp-size-btn[data-lp-size="third"] { display: none !important; }',
