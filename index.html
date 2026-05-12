@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="Build chord progressions in any key, visualise scales on the fretboard, use the built-in tuner and arpeggiator. A free, interactive guitar songwriting tool. No sign-up required.">
   <meta name="keywords" content="chord progression generator, guitar songwriting tool, chord progressions in key, music theory, scale finder, arpeggiator, guitar tuner, free songwriting tool">
   <meta name="theme-color" content="#d4a745">
@@ -31,7 +31,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 9999;
+      /* Raised above Ko-fi floating widget (z-index 10002) so the modal
+         CTAs are never covered. See uz-footer.js for the deferred-load
+         logic that also keeps the widget hidden until the modal closes. */
+      z-index: 10010;
       opacity: 1;
       transition: opacity 0.3s ease;
     }
@@ -48,7 +51,15 @@
       padding: 28px 32px;
       max-width: 540px;
       width: 92%;
+      /* Use dynamic viewport height with vh fallback so the card never
+         extends behind iOS Safari's URL bar / bottom bar. The card now
+         scrolls its own content when it would otherwise overflow, so the
+         "Got it!" CTA is always reachable. */
       max-height: 92vh;
+      max-height: calc(100dvh - 32px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
       animation: slideInModal 0.3s ease;
     }
@@ -176,6 +187,8 @@
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.15s;
+      /* iOS Safari: ensure ≥44px hit area on touch */
+      min-height: 44px;
     }
 
     .welcome-modal-btn-primary {
@@ -592,6 +605,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script type="module" src="app.js?v=101"></script>
   <script src="uz-nav.js"></script>
-  <script src="uz-footer.js"></script>
+  <script src="uz-footer.js?v=2"></script>
 </body>
 </html>
