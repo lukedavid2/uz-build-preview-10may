@@ -22,195 +22,49 @@
   <link rel="stylesheet" href="styles.css?v=101">
   <style>
     .welcome-modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0, 0, 0, 0.7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      /* Raised above Ko-fi floating widget (z-index 10002) so the modal
-         CTAs are never covered. See uz-footer.js for the deferred-load
-         logic that also keeps the widget hidden until the modal closes. */
-      z-index: 10010;
-      opacity: 1;
-      transition: opacity 0.3s ease;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10010; opacity: 1; transition: opacity 0.3s ease;
     }
-
-    .welcome-modal-overlay.hidden {
-      display: none;
-      opacity: 0;
-    }
-
+    .welcome-modal-overlay.hidden { display: none; opacity: 0; }
     .welcome-modal-card {
-      background: #1a1a2a;
-      border: 1px solid rgba(200, 160, 74, 0.3);
-      border-radius: 12px;
-      padding: 28px 32px;
-      max-width: 540px;
-      width: 92%;
-      /* Use dynamic viewport height with vh fallback so the card never
-         extends behind iOS Safari's URL bar / bottom bar. The card now
-         scrolls its own content when it would otherwise overflow, so the
-         "Got it!" CTA is always reachable. */
+      background: #1a1a2a; border: 1px solid rgba(200, 160, 74, 0.3);
+      border-radius: 12px; padding: 28px 32px;
+      max-width: 540px; width: 92%;
       max-height: 92vh;
       max-height: calc(100dvh - 32px);
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
       padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
       animation: slideInModal 0.3s ease;
     }
-
     @keyframes slideInModal {
-      from {
-        opacity: 0;
-        transform: scale(0.95) translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-      }
+      from { opacity: 0; transform: scale(0.95) translateY(-20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
     }
-
-    .welcome-modal-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-
-    .welcome-modal-header img {
-      width: 36px;
-      height: 36px;
-    }
-
-    .welcome-modal-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #d4a745;
-      margin: 0;
-    }
-
-    .welcome-modal-body {
-      color: #e0e0e0;
-      font-family: 'Outfit', sans-serif;
-      font-size: 0.92rem;
-      line-height: 1.5;
-    }
-
-    .welcome-modal-section {
-      margin-bottom: 14px;
-    }
-
-    .welcome-modal-section h3 {
-      color: #c8a04a;
-      font-size: 0.78rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin: 0 0 8px 0;
-    }
-
-    .welcome-modal-section p {
-      margin: 0 0 6px 0;
-      color: #d0d0d0;
-    }
-
-    .welcome-modal-section ol {
-      margin: 0;
-      padding-left: 22px;
-      color: #d0d0d0;
-    }
+    .welcome-modal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .welcome-modal-header img { width: 36px; height: 36px; }
+    .welcome-modal-title { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 700; color: #d4a745; margin: 0; }
+    .welcome-modal-body { color: #e0e0e0; font-family: 'Outfit', sans-serif; font-size: 0.92rem; line-height: 1.5; }
+    .welcome-modal-section { margin-bottom: 14px; }
+    .welcome-modal-section h3 { color: #c8a04a; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 8px 0; }
+    .welcome-modal-section p { margin: 0 0 6px 0; color: #d0d0d0; }
+    .welcome-modal-section ol { margin: 0; padding-left: 22px; color: #d0d0d0; }
     .welcome-modal-section ol li { margin: 2px 0; }
-
-    .welcome-modal-section ul {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .welcome-modal-section li {
-      margin: 4px 0;
-      color: #d0d0d0;
-    }
-
-    /* Tools as a 2-column grid — keeps the whole modal short. */
-    .welcome-tools {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      column-gap: 16px;
-      row-gap: 4px;
-    }
-    .welcome-tools li {
-      margin: 0;
-      padding: 4px 0;
-      font-size: 0.88rem;
-    }
-    .welcome-tools li strong {
-      color: #d4a745;
-      font-weight: 600;
-    }
-
-    /* Chevron only on plain <ul> items (not tools, not the numbered quick-start <ol>). */
-    .welcome-modal-section ul:not(.welcome-tools) li:before {
-      content: "▸ ";
-      color: #c8a04a;
-      font-weight: 600;
-      margin-right: 6px;
-    }
-
-    .welcome-suite-footer {
-      font-size: 0.8rem;
-      color: #999;
-      margin: 0;
-      padding-top: 4px;
-      border-top: 1px solid rgba(200, 160, 74, 0.15);
-    }
-
-    .welcome-modal-footer {
-      display: flex;
-      gap: 12px;
-      margin-top: 18px;
-      justify-content: flex-end;
-    }
-
-    .welcome-modal-btn {
-      font-family: 'Outfit', sans-serif;
-      font-size: 0.9rem;
-      font-weight: 600;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.15s;
-      /* iOS Safari: ensure ≥44px hit area on touch */
-      min-height: 44px;
-    }
-
-    .welcome-modal-btn-primary {
-      background: #d4a745;
-      color: #1a1a2a;
-    }
-
-    .welcome-modal-btn-primary:hover {
-      background: #e8ba50;
-    }
-
-    .welcome-modal-btn-secondary {
-      background: rgba(200, 160, 74, 0.1);
-      color: #c8a04a;
-      border: 1px solid rgba(200, 160, 74, 0.3);
-    }
-
-    .welcome-modal-btn-secondary:hover {
-      background: rgba(200, 160, 74, 0.2);
-      border-color: #d4a745;
-    }
-
+    .welcome-modal-section ul { margin: 0; padding: 0; list-style: none; }
+    .welcome-modal-section li { margin: 4px 0; color: #d0d0d0; }
+    .welcome-tools { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; row-gap: 4px; }
+    .welcome-tools li { margin: 0; padding: 4px 0; font-size: 0.88rem; }
+    .welcome-tools li strong { color: #d4a745; font-weight: 600; }
+    .welcome-modal-section ul:not(.welcome-tools) li:before { content: "▸ "; color: #c8a04a; font-weight: 600; margin-right: 6px; }
+    .welcome-suite-footer { font-size: 0.8rem; color: #999; margin: 0; padding-top: 4px; border-top: 1px solid rgba(200, 160, 74, 0.15); }
+    .welcome-modal-footer { display: flex; gap: 12px; margin-top: 18px; justify-content: flex-end; }
+    .welcome-modal-btn { font-family: 'Outfit', sans-serif; font-size: 0.9rem; font-weight: 600; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; min-height: 44px; }
+    .welcome-modal-btn-primary { background: #d4a745; color: #1a1a2a; }
+    .welcome-modal-btn-primary:hover { background: #e8ba50; }
+    .welcome-modal-btn-secondary { background: rgba(200, 160, 74, 0.1); color: #c8a04a; border: 1px solid rgba(200, 160, 74, 0.3); }
+    .welcome-modal-btn-secondary:hover { background: rgba(200, 160, 74, 0.2); border-color: #d4a745; }
     @media (max-width: 480px) {
       .welcome-modal-card { padding: 22px 20px; }
       .welcome-modal-title { font-size: 1.3rem; }
@@ -270,10 +124,6 @@
       </div>
     </div>
 
-    <!-- PROGRESSION MOVED UP - Above chord grid.
-         The header (title + song name + Loop btn + status) is now rendered
-         inline as the first row inside #progressionArea so it all fits on a
-         single line — see renderProgression(). -->
     <div class="progression-builder">
       <div class="progression-area" id="progressionArea">
         <span class="progression-empty">Click chords to build a progression...</span>
@@ -283,14 +133,8 @@
     <div class="main-content">
       <div class="chord-section">
         <div class="chord-grid" id="chordGrid"></div>
-
-        <!-- FRETBOARD NOW INSIDE chord-section, below modal row -->
         <div id="fretboardContainer" class="fretboard-container hidden"></div>
-
-        <!-- ARPEGGIATOR - Chord tones across the neck -->
         <div id="arpeggiatorContainer" class="arpeggiator-container hidden"></div>
-
-        <!-- GUITAR TUNER -->
         <div id="tunerContainer" class="tuner-container hidden"></div>
       </div>
 
@@ -310,7 +154,6 @@
       </div>
     </div>
 
-    <!-- SCALE POPUP -->
     <div id="scalePopup" class="scale-popup hidden">
       <div class="scale-popup-content">
         <button class="close-btn" data-action="toggleScalePopup">×</button>
@@ -318,7 +161,6 @@
       </div>
     </div>
 
-    <!-- CHORD PICKER POPUP (Oolimo-style) -->
     <div id="chordPickerPopup" class="chord-picker-popup hidden">
       <div class="chord-picker-content">
         <div class="chord-picker-header">
@@ -326,11 +168,7 @@
           <button class="popout-btn" data-action="popoutPanel" data-panel="chordPicker" title="Pop out to window">⧉</button>
           <button class="chord-picker-close" data-action="closeChordPicker">×</button>
         </div>
-
-        <!-- Root Note Selection -->
         <div class="root-note-grid" id="rootNoteGrid"></div>
-
-        <!-- Quality Selection -->
         <div class="quality-grid">
           <div class="quality-col">
             <div class="quality-col-label">Type</div>
@@ -351,8 +189,6 @@
             <button class="quality-btn" data-ext="9">9</button>
           </div>
         </div>
-
-        <!-- Result and Add button -->
         <div class="chord-picker-result">
           <div class="result-chord-name" id="pickerResultChord">C</div>
           <button class="add-to-progression-btn" data-action="addPickedChord">Add to Progression</button>
@@ -361,7 +197,6 @@
       </div>
     </div>
 
-    <!-- PLAYBACK POPUP (Loop, genre, V1V2, BPM, instruments) -->
     <div id="playbackPopup" class="playback-popup hidden">
       <div class="playback-content">
         <div class="playback-header">
@@ -372,7 +207,6 @@
       </div>
     </div>
 
-    <!-- FILE POPUP (Undo, Redo, Save, Open, PDF, Clear) -->
     <div id="filePopup" class="file-popup hidden">
       <div class="file-content">
         <div class="file-header">
@@ -383,7 +217,6 @@
       </div>
     </div>
 
-    <!-- KEY FINDER POPUP -->
     <div id="keyFinderPopup" class="key-finder-popup hidden">
       <div class="key-finder-content">
         <div class="key-finder-header">
@@ -392,11 +225,7 @@
           <button class="key-finder-close" data-action="closeKeyFinder">×</button>
         </div>
         <p class="key-finder-desc">Enter chords to find what key they're in</p>
-
-        <!-- Root Note Selection -->
         <div class="kf-root-grid" id="kfRootGrid"></div>
-
-        <!-- Quality Selection -->
         <div class="kf-quality-row">
           <button class="kf-quality-btn active" data-kf-quality="">Maj</button>
           <button class="kf-quality-btn" data-kf-quality="m">min</button>
@@ -406,24 +235,17 @@
           <button class="kf-quality-btn" data-kf-quality="dim">dim</button>
           <button class="kf-quality-btn" data-kf-quality="sus4">sus4</button>
         </div>
-
-        <!-- Current chord preview and add -->
         <div class="kf-add-row">
           <span class="kf-preview" id="kfPreview">C</span>
           <button class="kf-add-btn" data-action="kfAddChord">+ Add</button>
         </div>
-
-        <!-- Chord progression display -->
         <div class="kf-progression" id="kfProgression">
           <span class="kf-empty">Add chords above...</span>
         </div>
-
-        <!-- Result -->
         <div class="kf-result" id="kfResult">
           <div class="kf-result-label">Possible Keys:</div>
           <div class="kf-result-keys" id="kfResultKeys">-</div>
         </div>
-
         <div class="kf-actions">
           <button class="kf-clear-btn" data-action="kfClear">Clear</button>
           <button class="kf-use-btn" data-action="kfUseKey">Use This Key</button>
@@ -431,7 +253,6 @@
       </div>
     </div>
 
-    <!-- RHYMEFORGE BANNER -->
     <a href="rhymeforge/" class="rf-banner">
       <div class="rf-banner-top">
         <img src="lemon-logo.png" alt="" class="rf-banner-lemon" onerror="this.style.display='none'">
@@ -454,22 +275,18 @@
         <span class="rf-chip rf-c5">Consonance</span>
       </div>
     </a>
-
   </div>
 
-  <!-- WELCOME MODAL -->
   <div id="welcomeModal" class="welcome-modal-overlay hidden">
     <div class="welcome-modal-card">
       <div class="welcome-modal-header">
         <img src="lemon-logo.png" alt="Undercover Zest" onerror="this.style.display='none'">
         <h2 class="welcome-modal-title">Undercover Zest</h2>
       </div>
-
       <div class="welcome-modal-body">
         <div class="welcome-modal-section">
           <p>A free guitar songwriting suite — build chord progressions, write lyrics with chords above the words, and find rhymes without leaving the page.</p>
         </div>
-
         <div class="welcome-modal-section">
           <h3>Quick start</h3>
           <ol>
@@ -479,7 +296,6 @@
             <li>Open the <strong>♫ Lyrics</strong> tab on the left to write words and place chords above them</li>
           </ol>
         </div>
-
         <div class="welcome-modal-section">
           <h3>Tools</h3>
           <ul class="welcome-tools">
@@ -491,12 +307,10 @@
             <li><strong>♫ Lyrics + Rhymes</strong></li>
           </ul>
         </div>
-
         <div class="welcome-modal-section">
           <p class="welcome-suite-footer">Part of the Undercover Zest suite — <strong>RhymeForge</strong>, <strong>CollisionLab</strong>, <strong>Morning Pages</strong>, <strong>SenseSpark</strong>.</p>
         </div>
       </div>
-
       <div class="welcome-modal-footer">
         <button class="welcome-modal-btn welcome-modal-btn-secondary" id="welcomeLearnMore">Learn More</button>
         <button class="welcome-modal-btn welcome-modal-btn-primary" id="welcomeGotIt">Got it!</button>
@@ -505,83 +319,25 @@
   </div>
 
   <script>
-    // Welcome modal logic
     (function() {
       const VISITED_KEY = 'uz-has-visited';
       const modal = document.getElementById('welcomeModal');
       const tutorialBtn = document.getElementById('btnTutorial');
       const gotItBtn = document.getElementById('welcomeGotIt');
       const learnMoreBtn = document.getElementById('welcomeLearnMore');
-
-      // Check if user has visited before
-      function hasVisited() {
-        return localStorage.getItem(VISITED_KEY) === 'true';
-      }
-
-      // Mark user as visited
-      function markAsVisited() {
-        localStorage.setItem(VISITED_KEY, 'true');
-      }
-
-      // Show modal
-      function showModal() {
-        if (modal) {
-          modal.classList.remove('hidden');
-        }
-      }
-
-      // Hide modal
-      function hideModal() {
-        if (modal) {
-          modal.classList.add('hidden');
-        }
-      }
-
-      // Show modal on first visit
-      if (!hasVisited()) {
-        showModal();
-      }
-
-      // Tutorial button click handler. Note: btnTutorial also carries
-      // data-action="openTutorial" so app.js's body click handler will
-      // re-fire showModal via that action — but the listener here works
-      // even before app.js (an ES module) finishes loading.
-      if (tutorialBtn) {
-        tutorialBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          showModal();
-        });
-      }
-      // Expose globally so app.js's data-action="openTutorial" can call us.
+      function hasVisited() { return localStorage.getItem(VISITED_KEY) === 'true'; }
+      function markAsVisited() { localStorage.setItem(VISITED_KEY, 'true'); }
+      function showModal() { if (modal) modal.classList.remove('hidden'); }
+      function hideModal() { if (modal) modal.classList.add('hidden'); }
+      if (!hasVisited()) { showModal(); }
+      if (tutorialBtn) { tutorialBtn.addEventListener('click', function(e) { e.preventDefault(); showModal(); }); }
       window.uzShowTutorial = showModal;
-
-      // Got it button click handler
-      if (gotItBtn) {
-        gotItBtn.addEventListener('click', function() {
-          markAsVisited();
-          hideModal();
-        });
-      }
-
-      // Learn More button - navigate to homepage
-      if (learnMoreBtn) {
-        learnMoreBtn.addEventListener('click', function() {
-          window.location.href = '/homepage/';
-        });
-      }
-
-      // Close modal on overlay click (optional)
-      if (modal) {
-        modal.addEventListener('click', function(e) {
-          if (e.target === modal) {
-            hideModal();
-          }
-        });
-      }
+      if (gotItBtn) { gotItBtn.addEventListener('click', function() { markAsVisited(); hideModal(); }); }
+      if (learnMoreBtn) { learnMoreBtn.addEventListener('click', function() { window.location.href = '/homepage/'; }); }
+      if (modal) { modal.addEventListener('click', function(e) { if (e.target === modal) hideModal(); }); }
     })();
   </script>
 
-  <!-- Lyrics Panel (Embedded RhymeForge) -->
   <div class="lyrics-panel-tab" id="lyricsPanelTab" title="RhymeForge Lyrics">♫ Lyrics</div>
   <div class="lyrics-panel" id="lyricsPanel">
     <div class="lp-header">
@@ -597,14 +353,12 @@
         <button class="lp-close-btn" id="lyricsPanelClose">×</button>
       </div>
     </div>
-    <div class="lp-body" id="lpBody">
-      <!-- Content rendered by JS -->
-    </div>
+    <div class="lp-body" id="lpBody"></div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script type="module" src="app.js?v=101"></script>
   <script src="uz-nav.js"></script>
-  <script src="uz-footer.js?v=3"></script>
+  <script src="uz-footer.js?v=4"></script>
 </body>
 </html>
