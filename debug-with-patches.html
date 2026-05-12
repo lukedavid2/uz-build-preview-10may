@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>DEBUG — Guitar Chord Progression Builder — Undercover Zest</title>
+  <link rel="stylesheet" href="styles.css?v=101">
+  <style>
+    .welcome-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center;
+      z-index: 10010; opacity: 1; transition: opacity 0.3s ease; }
+    .welcome-modal-overlay.hidden { display: none; opacity: 0; }
+    .welcome-modal-card { background: #1a1a2a; border: 1px solid rgba(200, 160, 74, 0.3);
+      border-radius: 12px; padding: 28px 32px; max-width: 540px; width: 92%;
+      max-height: 92vh; max-height: calc(100dvh - 32px); overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8); }
+    .debug-banner { position: fixed; top: 0; left: 0; right: 0; background: #ff3030; color: #fff;
+      padding: 4px 8px; z-index: 99999; font-size: 11px; font-family: monospace; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="debug-banner">DEBUG: uz-deferred-patches.js ENABLED — investigating regression. Check console.</div>
+  <div class="container">
+    <div class="header">
+      <div class="logo-container">
+        <div class="logo">Undercover <span>Zest</span></div>
+      </div>
+      <div class="tagline">DEBUG MODE</div>
+    </div>
+    <div class="key-selector" id="keySelector">
+      <button class="key-collapser" id="keyCollapser" data-action="toggleKeyExpander">
+        <span class="key-label">KEY</span>
+        <span class="key-collapser-current" id="keyCollapserCurrent">C</span>
+        <span class="key-collapser-arrow">&#9662;</span>
+      </button>
+      <div id="keyButtons" class="key-buttons-row"></div>
+    </div>
+    <div class="controls-bar">
+      <div class="controls-left">
+        <button class="tab-collapser" id="tabCollapser" data-action="toggleTabExpander">
+          <span class="tab-collapser-current" id="tabCollapserCurrent">Bright Chords (Major)</span>
+          <span class="tab-collapser-arrow">&#9662;</span>
+        </button>
+        <div id="tabButtons" class="tab-buttons"></div>
+      </div>
+      <div class="controls-right">
+        <button class="tool-toggle-btn" id="toolMenuToggle" data-action="toggleToolMenu">Tools</button>
+        <div class="tool-buttons" id="toolButtons"></div>
+      </div>
+    </div>
+    <div class="progression-builder">
+      <div class="progression-area" id="progressionArea">
+        <span class="progression-empty">Click chords to build a progression...</span>
+      </div>
+    </div>
+    <div class="main-content">
+      <div class="chord-section">
+        <div class="chord-grid" id="chordGrid"></div>
+      </div>
+      <div class="detail-section">
+        <div class="chord-detail-panel always-visible" id="chordDetailPanel">
+          <div class="chord-detail-header">
+            <span class="chord-detail-title" id="chordDetailTitle">Select a chord</span>
+          </div>
+          <div id="chordTheoryContext" class="theory-context"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Capture ALL errors to window.__debugErrors for inspection
+    window.__debugErrors = [];
+    window.__debugLogs = [];
+    window.addEventListener('error', e => {
+      window.__debugErrors.push({ kind: 'error', msg: e.message, src: (e.filename||'').slice(-60), line: e.lineno, col: e.colno });
+    });
+    window.addEventListener('unhandledrejection', e => {
+      window.__debugErrors.push({ kind: 'rejection', reason: String(e.reason).slice(0, 200) });
+    });
+    // Patch console.error to capture
+    const origErr = console.error;
+    console.error = function(...args) { window.__debugLogs.push({ kind: 'console.error', args: args.map(a => String(a).slice(0, 200)) }); origErr.apply(console, args); };
+  </script>
+  <script type="module" src="app.js?v=101"></script>
+  <script src="uz-deferred-patches.js?v=1"></script>
+</body>
+</html>
