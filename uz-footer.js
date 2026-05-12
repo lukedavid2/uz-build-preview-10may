@@ -16,52 +16,8 @@
  *                                       (added 2026-05-12, see MOBILE FIXES section)
  *  3. Ko-fi floating widget script     — donation overlay chat widget
  *                                       (now deferred until welcome/intro modals dismiss)
- *
- * ── FOOTER VARIANTS ──────────────────────────────────────────────
- *
- *  The footer supports two layout variants, auto-detected by app:
- *
- *  "full"    — Block layout with donation button, credit line,
- *              and contact link. Used by most apps.
- *              (Homepage, Undercover Zest, Morning Pages,
- *               SenseSpark, CollisionLab)
- *
- *  "compact" — Single-line flex layout with credit, contact,
- *              and coffee link separated by middots.
- *              Used by RhymeForge.
- *
- * ── DARK MODE ────────────────────────────────────────────────────
- *
- *  All apps in the suite use dark themes, so the footer defaults
- *  to dark mode styling. Light mode is available via the
- *  body.light-mode class or @media (prefers-color-scheme: light).
- *
- * ── HOW TO ADD TO A PAGE ─────────────────────────────────────────
- *
- *  Place at the bottom of <body>, after your app's root element
- *  and AFTER uz-nav.js (if used):
- *
- *    <body>
- *      <div id="root"></div>
- *      <!-- your app scripts -->
- *      <script src="uz-nav.js"></script>
- *      <script src="uz-footer.js"></script>
- *    </body>
- *
- *  The script auto-detects the active app from the URL pathname.
- *
- * ── CUSTOMISATION ────────────────────────────────────────────────
- *
- *  Override these CSS custom properties on :root or body:
- *
- *    --uz-footer-bg       (default: dark gradient)
- *    --uz-footer-border   (default: #c8a04a)
- *    --uz-footer-text     (default: #999)
- *    --uz-footer-accent   (default: #d4a853)
- *
- * ── Z-INDEX ──────────────────────────────────────────────────────
- *
- *  Ko-fi widget: z-index 10002 (above nav's 9999)
+ *  4. Mobile UX helpers                — key picker collapse, looper pill,
+ *                                       chord shape size toggle (pass 2)
  *
  * ════════════════════════════════════════════════════════════════════
  */
@@ -90,14 +46,11 @@
   });
 
   // ── Determine footer variant ──────────────────────────────────────
-  // RhymeForge uses a compact single-line footer; all others use full
   var variant = (activeApp === 'rhyme') ? 'compact' : 'full';
 
   // ── Build footer HTML ─────────────────────────────────────────────
   var footerHTML;
-
   if (variant === 'compact') {
-    // ── Compact: single-line flex layout (RhymeForge style) ─────────
     footerHTML =
       '<footer class="uz-site-footer uz-footer--compact">' +
         '<div class="uz-footer-inline">' +
@@ -109,43 +62,28 @@
         '</div>' +
       '</footer>';
   } else {
-    // ── Full: block layout with donation button ─────────────────────
     footerHTML =
       '<footer class="uz-site-footer uz-footer--full">' +
         '<div class="uz-footer-content">' +
           '<div class="uz-support-section">' +
             '<p class="uz-support-desc">Built for songwriters, powered by coffee. If you love this tool, please feel free to donate below!</p>' +
             '<div class="uz-donation-buttons">' +
-              '<a href="https://ko-fi.com/undercoverzest" class="uz-donation-btn" target="_blank" rel="noopener noreferrer">' +
-                '☕ Buy me a coffee' +
-              '</a>' +
+              '<a href="https://ko-fi.com/undercoverzest" class="uz-donation-btn" target="_blank" rel="noopener noreferrer">☕ Buy me a coffee</a>' +
             '</div>' +
           '</div>' +
-          '<div class="uz-footer-credit">' +
-            'Made with 🍋 by Luke' +
-          '</div>' +
-          '<div class="uz-footer-contact">' +
-            'We love hearing from you if you have any suggestions, or love: <a href="mailto:tidbit-people.1u@icloud.com">Contact me</a>' +
-          '</div>' +
+          '<div class="uz-footer-credit">Made with 🍋 by Luke</div>' +
+          '<div class="uz-footer-contact">We love hearing from you if you have any suggestions, or love: <a href="mailto:tidbit-people.1u@icloud.com">Contact me</a></div>' +
         '</div>' +
       '</footer>';
   }
 
-  // ── Inject footer before closing </body> ──────────────────────────
   var container = document.createElement('div');
   container.innerHTML = footerHTML;
-  var footerEl = container.firstChild;
-  document.body.appendChild(footerEl);
+  document.body.appendChild(container.firstChild);
 
-  // ────────────────────────────────────────────────────────────────
-  // ── Ko-fi widget loader (deferred until any intro/welcome modal closes)
-  //    (changed 2026-05-12 — fixes the bug where the floating Ko-fi
-  //     button covered the welcome-modal "Got it!" CTA on iPhone.)
-  // ────────────────────────────────────────────────────────────────
+  // ── Ko-fi widget loader (deferred until welcome/intro modal closes) ──
   var isMorningPages = activeApp === 'morning' ||
-    window.location.href.toLowerCase().indexOf('morningpages') !== -1 ||
-    window.location.href.toLowerCase().indexOf('morning-pages') !== -1 ||
-    window.location.href.toLowerCase().indexOf('morning_pages') !== -1;
+    window.location.href.toLowerCase().indexOf('morningpages') !== -1;
 
   if (!isMorningPages) {
     var kofiInjected = false;
@@ -162,11 +100,8 @@
             'floating-chat.donateButton.background-color': '#c8a04a',
             'floating-chat.donateButton.text-color': '#fff'
           });
-          // Ensure Ko-fi widget sits above nav and has no white background.
-          // Note: still below the welcome-modal-overlay (10010) — see mobile-fixes CSS.
           setTimeout(function () {
-            var kofiEls = document.querySelectorAll('[class*="floatingchat"], [id*="kofi"]');
-            kofiEls.forEach(function (el) {
+            document.querySelectorAll('[class*="floatingchat"], [id*="kofi"]').forEach(function (el) {
               el.style.zIndex = '10002';
               el.style.overflow = 'visible';
               el.style.background = 'transparent';
@@ -177,10 +112,6 @@
       document.body.appendChild(kofiScript);
     }
 
-    // Find any visible "welcome / intro" modal. We treat the following
-    // as gates: UZ root #welcomeModal, plus any element whose id/class
-    // contains "welcome", "intro", or whose role is "dialog" AND is
-    // currently visible.
     function getActiveIntroModal() {
       var candidates = document.querySelectorAll(
         '#welcomeModal:not(.hidden),' +
@@ -202,58 +133,129 @@
 
     function waitForModalDismissThenInject() {
       var modal = getActiveIntroModal();
-      if (!modal) {
-        injectKofi();
-        return;
-      }
-      // Watch for the modal becoming hidden, OR for it being removed,
-      // OR for "Got it"/close button to be clicked.
+      if (!modal) { injectKofi(); return; }
       var settled = false;
       function maybeInject() {
         if (settled) return;
         var cs = window.getComputedStyle(modal);
         if (!document.body.contains(modal) ||
             modal.classList.contains('hidden') ||
-            cs.display === 'none' ||
-            cs.visibility === 'hidden') {
-          settled = true;
-          mo.disconnect();
-          injectKofi();
+            cs.display === 'none' || cs.visibility === 'hidden') {
+          settled = true; mo.disconnect(); injectKofi();
         }
       }
       var mo = new MutationObserver(maybeInject);
       mo.observe(modal, { attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
       mo.observe(document.body, { childList: true, subtree: false });
-      // Safety net: also poll once a second
-      var pollId = setInterval(function () {
-        maybeInject();
-        if (settled) clearInterval(pollId);
-      }, 1000);
-      // Absolute fallback — if the user just leaves the modal up for
-      // 60 seconds, go ahead and inject anyway so the donation widget
-      // isn't lost forever.
-      setTimeout(function () {
-        settled = true;
-        mo.disconnect();
-        clearInterval(pollId);
-        injectKofi();
-      }, 60000);
+      var pollId = setInterval(function () { maybeInject(); if (settled) clearInterval(pollId); }, 1000);
+      setTimeout(function () { settled = true; mo.disconnect(); clearInterval(pollId); injectKofi(); }, 60000);
     }
 
-    // Kick off after a microtask so any inline-script (like UZ root's
-    // welcome modal init at the bottom of index.html) has run first.
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', waitForModalDismissThenInject, { once: true });
     } else {
       setTimeout(waitForModalDismissThenInject, 0);
     }
-  } // end !isMorningPages
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // ── Mobile UX helpers (pass 2 — added 2026-05-12)
+  // ────────────────────────────────────────────────────────────────
+  function isMobileWidth() { return window.innerWidth <= 640; }
+
+  function setupMobileEnhancements() {
+    if (!isMobileWidth()) return;
+    var body = document.body;
+    if (!body) return;
+
+    // ── 16. Key picker collapsed by default on mobile ─────────────
+    var keyCollapser = document.getElementById('keyCollapser');
+    if (keyCollapser) {
+      body.classList.add('uz-key-collapsed');
+      keyCollapser.addEventListener('click', function () {
+        body.classList.toggle('uz-key-collapsed');
+      });
+    }
+
+    // ── 18. Loop / repeat buttons collapse to "×N ▾" pill ─────────
+    function rebuildLooperPills() {
+      var groups = document.querySelectorAll('.line-repeats');
+      groups.forEach(function (g) {
+        if (g.dataset.uzMobileCollapsed === 'done') return;
+        g.dataset.uzMobileCollapsed = 'done';
+        var active = g.querySelector('.repeat-btn.active');
+        var label = active ? active.textContent.trim() : '1';
+        var pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'uz-mobile-loop-pill';
+        pill.setAttribute('aria-label', 'Repeat count');
+        pill.textContent = '×' + label + ' ▾';
+        pill.addEventListener('click', function (e) {
+          e.stopPropagation();
+          g.classList.toggle('uz-loop-expanded');
+        });
+        g.insertBefore(pill, g.firstChild);
+      });
+      document.querySelectorAll('.line-repeats .repeat-btn.active').forEach(function (a) {
+        var pill = a.parentElement.querySelector('.uz-mobile-loop-pill');
+        if (pill) pill.textContent = '×' + a.textContent.trim() + ' ▾';
+      });
+      document.querySelectorAll('.line-repeats.uz-loop-expanded .repeat-btn').forEach(function (b) {
+        if (b.dataset.uzClickWired === '1') return;
+        b.dataset.uzClickWired = '1';
+        b.addEventListener('click', function () {
+          var g = b.closest('.line-repeats');
+          if (g) setTimeout(function () { g.classList.remove('uz-loop-expanded'); }, 150);
+        });
+      });
+    }
+    setTimeout(rebuildLooperPills, 500);
+    var rerenderObs = new MutationObserver(function () { rebuildLooperPills(); });
+    rerenderObs.observe(document.body, { childList: true, subtree: true });
+
+    // ── 20. Chord-shape size toggle pill ───────────────────────────
+    var SHAPE_STATES = ['', 'uz-shapes-compact', 'uz-shapes-names'];
+    var SHAPE_LABEL  = ['Shapes: Full', 'Shapes: Compact', 'Shapes: Names only'];
+    var stored = 0;
+    try { stored = parseInt(localStorage.getItem('uz-shapes-state') || '0', 10) || 0; } catch (e) {}
+    function applyShapeState(idx) {
+      idx = ((idx % SHAPE_STATES.length) + SHAPE_STATES.length) % SHAPE_STATES.length;
+      SHAPE_STATES.forEach(function (cls) { if (cls) body.classList.remove(cls); });
+      if (SHAPE_STATES[idx]) body.classList.add(SHAPE_STATES[idx]);
+      try { localStorage.setItem('uz-shapes-state', String(idx)); } catch (e) {}
+      var btn = document.getElementById('uzShapeToggle');
+      if (btn) btn.textContent = SHAPE_LABEL[idx];
+      return idx;
+    }
+    applyShapeState(stored);
+    function ensureShapeToggle() {
+      if (document.getElementById('uzShapeToggle')) return;
+      if (!document.getElementById('chordDetailPanel') && !document.querySelector('.progression-line')) return;
+      var btn = document.createElement('button');
+      btn.id = 'uzShapeToggle';
+      btn.type = 'button';
+      btn.className = 'uz-shape-toggle-btn';
+      btn.textContent = SHAPE_LABEL[stored];
+      btn.addEventListener('click', function () { stored = applyShapeState(stored + 1); });
+      document.body.appendChild(btn);
+    }
+    setTimeout(ensureShapeToggle, 800);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupMobileEnhancements);
+  } else {
+    setupMobileEnhancements();
+  }
+  window.addEventListener('resize', function () {
+    if (isMobileWidth() && !document.body.dataset.uzMobileSetup) {
+      document.body.dataset.uzMobileSetup = '1';
+      setupMobileEnhancements();
+    }
+  });
 
   // ── Inject CSS ────────────────────────────────────────────────────
   var css = [
     '/* ════════ UZ FOOTER (uz-footer.js) ════════ */',
-    '',
-    '/* ── Full variant (default) ── */',
     '.uz-footer--full {',
     '  background: linear-gradient(135deg, #1a1d24 0%, #22262e 100%);',
     '  border-top: 2px solid #c8a04a;',
@@ -262,216 +264,48 @@
     '  text-align: center;',
     '  font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;',
     '}',
-    '.uz-footer--full .uz-footer-content {',
-    '  max-width: 600px;',
-    '  margin: 0 auto;',
-    '}',
-    '.uz-footer--full .uz-donation-buttons {',
-    '  display: flex;',
-    '  gap: 12px;',
-    '  justify-content: center;',
-    '  flex-wrap: wrap;',
-    '  margin-bottom: 12px;',
-    '}',
+    '.uz-footer--full .uz-footer-content { max-width: 600px; margin: 0 auto; }',
+    '.uz-footer--full .uz-donation-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }',
     '.uz-footer--full .uz-donation-btn {',
-    '  display: inline-block;',
-    '  text-decoration: none;',
+    '  display: inline-block; text-decoration: none;',
     '  background: linear-gradient(135deg, #c8a04a 0%, #a07830 100%);',
-    '  color: #fff;',
-    '  border: 2px solid transparent;',
-    '  padding: 10px 22px;',
-    '  border-radius: 8px;',
-    '  cursor: pointer;',
-    '  font-size: 14px;',
-    '  font-weight: 700;',
-    '  font-family: "Outfit", sans-serif;',
-    '  transition: all 0.15s ease;',
-    '  box-shadow: 0 4px 12px rgba(200, 160, 74, 0.3);',
+    '  color: #fff; border: 2px solid transparent;',
+    '  padding: 10px 22px; border-radius: 8px; cursor: pointer;',
+    '  font-size: 14px; font-weight: 700; font-family: "Outfit", sans-serif;',
+    '  transition: all 0.15s ease; box-shadow: 0 4px 12px rgba(200, 160, 74, 0.3);',
     '}',
-    '.uz-footer--full .uz-donation-btn:hover {',
-    '  transform: translateY(-2px);',
-    '  background: linear-gradient(135deg, #dbb455, #b88a3a);',
-    '  box-shadow: 0 6px 16px rgba(200, 160, 74, 0.5);',
-    '  color: #fff;',
-    '  text-decoration: none;',
-    '}',
-    '.uz-footer--full .uz-donation-btn:visited { color: #111; }',
-    '.uz-footer--full .uz-support-desc {',
-    '  font-size: 13px;',
-    '  color: #999;',
-    '  margin-bottom: 12px;',
-    '  font-family: "Outfit", sans-serif;',
-    '}',
-    '.uz-footer--full .uz-footer-credit {',
-    '  font-size: 13px;',
-    '  color: #777;',
-    '  margin-top: 12px;',
-    '}',
-    '.uz-footer--full .uz-footer-contact {',
-    '  font-size: 12px;',
-    '  color: #777;',
-    '  margin-top: 10px;',
-    '  font-family: "Outfit", sans-serif;',
-    '}',
-    '.uz-footer--full .uz-footer-contact a {',
-    '  color: #d4a853;',
-    '  text-decoration: none;',
-    '  font-weight: 600;',
-    '}',
-    '.uz-footer--full .uz-footer-contact a:hover {',
-    '  text-decoration: underline;',
-    '}',
-    '',
-    '/* ── Compact variant (RhymeForge) ── */',
-    '.uz-footer--compact {',
-    '  margin: 0;',
-    '  padding: 0;',
-    '  border: none;',
-    '  background: transparent;',
-    '  font-family: inherit;',
-    '}',
+    '.uz-footer--full .uz-donation-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(200, 160, 74, 0.5); }',
+    '.uz-footer--full .uz-support-desc { font-size: 13px; color: #999; margin-bottom: 12px; }',
+    '.uz-footer--full .uz-footer-credit { font-size: 13px; color: #777; margin-top: 12px; }',
+    '.uz-footer--full .uz-footer-contact { font-size: 12px; color: #777; margin-top: 10px; }',
+    '.uz-footer--full .uz-footer-contact a { color: #d4a853; text-decoration: none; font-weight: 600; }',
+    '.uz-footer--compact { margin: 0; padding: 0; border: none; background: transparent; }',
     '.uz-footer--compact .uz-footer-inline {',
-    '  max-width: 1100px;',
-    '  margin: 3rem auto 1.5rem;',
-    '  padding: 1.2rem 2rem 0;',
-    '  border-top: 1px solid var(--border, rgba(255,255,255,0.1));',
-    '  display: flex;',
-    '  align-items: center;',
-    '  justify-content: center;',
-    '  gap: 0.5rem;',
-    '  flex-wrap: wrap;',
-    '  font-size: 0.78rem;',
-    '  color: var(--text-muted, #888);',
+    '  max-width: 1100px; margin: 3rem auto 1.5rem; padding: 1.2rem 2rem 0;',
+    '  border-top: 1px solid rgba(255,255,255,0.1);',
+    '  display: flex; align-items: center; justify-content: center;',
+    '  gap: 0.5rem; flex-wrap: wrap; font-size: 0.78rem; color: #888;',
     '}',
-    '.uz-footer--compact .uz-footer-credit {',
-    '  opacity: 0.7;',
-    '}',
-    '.uz-footer--compact .uz-footer-sep {',
-    '  opacity: 0.3;',
-    '}',
-    '.uz-footer--compact .uz-footer-link {',
-    '  color: var(--text-muted, #888);',
-    '  text-decoration: none;',
-    '  transition: color 0.2s ease;',
-    '}',
-    '.uz-footer--compact .uz-footer-link:hover {',
-    '  color: var(--accent, #d4a853);',
-    '}',
-    '.uz-footer--compact .uz-footer-coffee {',
-    '  color: var(--accent-dim, #c8a04a);',
-    '}',
-    '.uz-footer--compact .uz-footer-coffee:hover {',
-    '  color: var(--accent, #d4a853);',
-    '}',
+    '.uz-footer--compact .uz-footer-link { color: #888; text-decoration: none; transition: color 0.2s; }',
+    '.uz-footer--compact .uz-footer-link:hover { color: #d4a853; }',
+    '.uz-footer--compact .uz-footer-coffee { color: #c8a04a; }',
+    '@media (max-width: 768px) { .uz-footer--full { padding: 20px 12px; } .uz-footer--full .uz-donation-btn { padding: 8px 18px; font-size: 13px; } }',
     '',
-    '/* ── Light mode overrides (for uz-footer.html or light apps) ── */',
-    'body.light-mode .uz-footer--full {',
-    '  background: linear-gradient(135deg, #faf8f4 0%, #f0ece4 100%);',
-    '  border-top-color: #c8a04a;',
-    '}',
-    'body.light-mode .uz-footer--full .uz-support-desc { color: #666; }',
-    'body.light-mode .uz-footer--full .uz-footer-credit { color: #888; }',
-    'body.light-mode .uz-footer--full .uz-footer-contact { color: #999; }',
-    'body.light-mode .uz-footer--full .uz-footer-contact a { color: #c8a04a; }',
-    'body.light-mode .uz-footer--full .uz-donation-btn {',
-    '  background: linear-gradient(135deg, #c8a04a, #a07830);',
-    '  color: #fff;',
-    '  border-color: transparent;',
-    '}',
-    'body.light-mode .uz-footer--full .uz-donation-btn:hover {',
-    '  box-shadow: 0 6px 16px rgba(200, 160, 74, 0.5);',
-    '}',
-    'body.light-mode .uz-footer--full .uz-donation-btn:visited { color: #fff; }',
+    '/* Ko-fi widget z-index */',
+    '.floatingchat-container-wrap, .floatingchat-container-wrap-mo498, #kofi-widget-overlay-mo498 { z-index: 10002 !important; overflow: visible !important; }',
+    '[class*="floatingchat"] iframe { border-radius: 12px !important; background: transparent !important; border: none !important; }',
+    '[class*="floatingchat"], [id*="kofi"] { background: transparent !important; box-shadow: none !important; }',
     '',
-    '/* ── Light mode via prefers-color-scheme ── */',
-    '@media (prefers-color-scheme: light) {',
-    '  .uz-footer--full {',
-    '    background: linear-gradient(135deg, #faf8f4 0%, #f0ece4 100%);',
-    '  }',
-    '  .uz-footer--full .uz-support-desc { color: #666; }',
-    '  .uz-footer--full .uz-footer-credit { color: #888; }',
-    '  .uz-footer--full .uz-footer-contact { color: #999; }',
-    '  .uz-footer--full .uz-footer-contact a { color: #c8a04a; }',
-    '  .uz-footer--full .uz-donation-btn { color: #fff; }',
-    '  .uz-footer--full .uz-donation-btn:visited { color: #fff; }',
-    '}',
-    '',
-    '/* ── Responsive ── */',
-    '@media (max-width: 768px) {',
-    '  .uz-footer--full { padding: 20px 12px; }',
-    '  .uz-footer--full .uz-donation-buttons { gap: 8px; }',
-    '  .uz-footer--full .uz-donation-btn { padding: 8px 18px; font-size: 13px; }',
-    '  .uz-footer--compact .uz-footer-inline { padding: 1rem 1rem 0; margin: 2rem auto 1rem; }',
-    '}',
-    '@media (max-width: 480px) {',
-    '  .uz-footer--full { padding: 16px 8px; margin-top: 30px; }',
-    '  .uz-footer--full .uz-donation-buttons { gap: 6px; }',
-    '  .uz-footer--full .uz-donation-btn { padding: 8px 14px; font-size: 12px; }',
-    '}',
-    '',
-    '/* ── Ko-fi widget z-index & appearance fix ── */',
-    '.floatingchat-container-wrap {',
-    '  z-index: 10002 !important;',
-    '  overflow: visible !important;',
-    '}',
-    '.floatingchat-container-wrap-mo498 {',
-    '  z-index: 10002 !important;',
-    '}',
-    '.floatingchat-container-wrap iframe,',
-    '.floatingchat-container-wrap-mo498 iframe {',
-    '  border-radius: 12px !important;',
-    '}',
-    '#kofi-widget-overlay-mo498 {',
-    '  z-index: 10002 !important;',
-    '}',
-    '/* Hide the white background area below Ko-fi widget */',
-    '.floatingchat-container-wrap .floatingchat-container,',
-    '.floatingchat-container-mo498,',
-    '[id*="kofi"],',
-    '[class*="floatingchat"] {',
-    '  background: transparent !important;',
-    '  box-shadow: none !important;',
-    '}',
-    '/* Ensure Ko-fi wrapper iframe has no white surround */',
-    '[class*="floatingchat"] iframe {',
-    '  background: transparent !important;',
-    '  border: none !important;',
-    '}',
-    '',
-    '/* ════════════════════════════════════════════════════════════',
-    '   MOBILE FIXES (added 2026-05-12)',
-    '   Suite-wide mobile/iOS-Safari fixes — see',
-    '   mobile-optimization-recommendations.md for full audit.',
-    '   ════════════════════════════════════════════════════════════ */',
-    '',
-    '/* — Dynamic-viewport helper variable for iOS Safari.',
-    '     100vh on iOS overshoots when the URL bar is visible.',
-    '     We expose --uz-vh so any rule can opt in. */',
+    '/* ════════ MOBILE FIXES (pass 1+2 — 2026-05-12) ════════ */',
     ':root { --uz-vh: 100vh; }',
     '@supports (height: 100dvh) { :root { --uz-vh: 100dvh; } }',
-    '',
-    '/* — iOS auto-zoom on focus: forced to 16px on any text-entry',
-    '     element, EVERY page in the suite. The audit found 12+',
-    '     offenders (13-15px). Don\'t apply to checkbox/radio/range.',
-    '     Uses !important inside a mobile-only media query so it',
-    '     beats class-specific rules (e.g. .lp-freewrite-area 13px)',
-    '     while preserving desktop typography. */',
     '@media (max-width: 768px) {',
     '  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),',
-    '  textarea,',
-    '  select {',
-    '    font-size: max(16px, 1rem) !important;',
-    '  }',
+    '  textarea, select { font-size: max(16px, 1rem) !important; }',
     '}',
-    '',
-    '/* — Tap-highlight: use brand-gold tint instead of default gray box. */',
     'html { -webkit-tap-highlight-color: rgba(212, 168, 83, 0.25); }',
     '',
-    '/* ─ Welcome / intro modals — make scrollable on phones ─ */',
-    '/* UZ root inline-styled welcome modal (specificity needs to beat',
-    '   the inline <style> rules in index.html). We also raise the',
-    '   overlay z-index above the Ko-fi widget (10002) so the modal',
-    '   always wins the stacking war while it is open. */',
+    '/* Welcome modal scrolls + sits above Ko-fi */',
     '.welcome-modal-overlay { z-index: 10010 !important; }',
     '.welcome-modal-card {',
     '  max-height: calc(var(--uz-vh) - 32px) !important;',
@@ -479,224 +313,173 @@
     '  -webkit-overflow-scrolling: touch;',
     '  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)) !important;',
     '}',
-    '/* Hide the Ko-fi widget while the welcome modal is open as a',
-    '   second line of defence (Safari 15.4+; older Safari falls back',
-    '   to the z-index rule above). */',
     'body:has(#welcomeModal:not(.hidden)) [class*="floatingchat"],',
-    'body:has(#welcomeModal:not(.hidden)) [id^="kofi-"] {',
-    '  display: none !important;',
-    '}',
+    'body:has(#welcomeModal:not(.hidden)) [id^="kofi-"] { display: none !important; }',
     '',
-    '/* ─ Lyrics panel: go full-screen on mobile ─ */',
-    '/* At <=640px the size-half/third/quarter widths (50/33/25 vw)',
-    '   leave too little room — the close button and size pills',
-    '   overflow past the panel right edge, and the UZ chord workspace',
-    '   shrinks below usable width. Force full-width. */',
+    '/* ── 17. Lyrics panel: full-width default + opt-in half-view ── */',
     '@media (max-width: 640px) {',
-    '  .lyrics-panel.open,',
-    '  .lyrics-panel.size-half,',
-    '  .lyrics-panel.size-third,',
-    '  .lyrics-panel.size-quarter {',
-    '    width: 100vw !important;',
-    '  }',
+    '  .lyrics-panel.open { width: 100vw !important; }',
+    '  .lyrics-panel.size-half { width: 50vw !important; }',
+    '  .lyrics-panel.size-third, .lyrics-panel.size-quarter { width: 50vw !important; }',
     '  .lyrics-panel { height: calc(var(--uz-vh) - var(--uz-rail-h, 52px)) !important; }',
-    '  /* Hide size pills on phones — they have no meaning at 100vw */',
-    '  .lyrics-panel .lp-size-btn { display: none !important; }',
-    '  /* Bump close × to a proper 44x44 tap target */',
+    '  .lyrics-panel .lp-tabs { position: relative; padding-right: 50px; }',
+    '  .lyrics-panel .lp-tabs-controls {',
+    '    position: absolute; top: 6px; right: 4px;',
+    '    margin-left: 0 !important; padding-right: 0 !important; gap: 2px;',
+    '  }',
+    '  .lyrics-panel .lp-size-btn { min-width: 28px; min-height: 28px; font-size: 11px; padding: 2px 6px; }',
     '  .lyrics-panel .lp-close-btn {',
-    '    min-width: 44px;',
-    '    min-height: 44px;',
-    '    font-size: 22px;',
-    '    display: inline-flex;',
-    '    align-items: center;',
-    '    justify-content: center;',
-    '    padding: 0;',
+    '    min-width: 44px; min-height: 44px; font-size: 22px;',
+    '    display: inline-flex; align-items: center; justify-content: center; padding: 0;',
     '  }',
-    '  /* Hide the vertical "Lyrics" handle once the panel is full-width */',
     '  body.lyrics-panel-open .lyrics-panel-tab { display: none !important; }',
-    '  /* And make sure the panel body scrolls its own content */',
-    '  .lyrics-panel .lp-body,',
-    '  .lyrics-panel .lp-pane {',
-    '    overflow-y: auto;',
-    '    -webkit-overflow-scrolling: touch;',
+    '  .lyrics-panel .lp-body, .lyrics-panel .lp-pane {',
+    '    overflow-y: auto; -webkit-overflow-scrolling: touch;',
     '  }',
-    '  /* Section buttons row inside the lyrics panel: scroll horizontally */',
-    '  .lp-section-btns {',
-    '    overflow-x: auto;',
-    '    -webkit-overflow-scrolling: touch;',
-    '    flex-wrap: nowrap;',
-    '    scrollbar-width: none;',
-    '  }',
+    '  .lp-section-btns { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }',
     '  .lp-section-btns::-webkit-scrollbar { display: none; }',
     '}',
     '',
-    '/* ─ Chord-line repeat buttons: scroll strip on phones ─ */',
-    '/* The Line row (☰ Line 1 × 1 2 3 4 ∞ Tab) does not fit when the',
-    '   workspace is constrained. Make the controls a horizontal scroll',
-    '   strip below 480px or whenever lyrics panel is open. */',
-    '@media (max-width: 480px) {',
-    '  .line-card .line-controls,',
-    '  .progression-line .line-controls,',
-    '  .line-row .repeat-controls,',
-    '  .repeat-controls {',
-    '    overflow-x: auto;',
-    '    -webkit-overflow-scrolling: touch;',
-    '    flex-wrap: nowrap !important;',
-    '    scrollbar-width: none;',
+    '/* ── 16. Key picker collapsed on mobile ── */',
+    '@media (max-width: 640px) {',
+    '  body.uz-key-collapsed #keyButtons { display: none !important; }',
+    '  body.uz-key-collapsed #keyCollapser { display: inline-flex !important; }',
+    '  #keyCollapser { min-height: 44px; padding-inline: 14px; font-size: 15px; }',
+    '}',
+    '',
+    '/* ── 18. Loop / repeat collapse on mobile ── */',
+    '@media (max-width: 640px) {',
+    '  .line-repeats { position: relative; gap: 4px !important; }',
+    '  .line-repeats .repeats-label,',
+    '  .line-repeats .repeat-btn { display: none !important; }',
+    '  .line-repeats.uz-loop-expanded .repeats-label,',
+    '  .line-repeats.uz-loop-expanded .repeat-btn { display: inline-flex !important; }',
+    '  .uz-mobile-loop-pill {',
+    '    min-height: 32px; padding: 4px 10px;',
+    '    border: 1px solid rgba(212,168,83,0.5);',
+    '    background: rgba(212,168,83,0.08); color: #d4a853;',
+    '    border-radius: 6px; font-size: 13px; font-weight: 600;',
+    '    cursor: pointer; white-space: nowrap;',
     '  }',
-    '  .line-card .line-controls::-webkit-scrollbar,',
-    '  .progression-line .line-controls::-webkit-scrollbar,',
-    '  .repeat-controls::-webkit-scrollbar { display: none; }',
-    '  /* Bump repeat-btn tap target on touch devices */',
-    '  .repeat-btn {',
-    '    min-width: 32px !important;',
-    '    min-height: 32px !important;',
-    '    font-size: 12px !important;',
+    '  .uz-mobile-loop-pill:active { transform: scale(0.96); }',
+    '}',
+    '',
+    '/* ── 19. Modal-Interchange chord alignment + grouped notes ── */',
+    '@media (max-width: 640px) {',
+    '  .chord-row.modal, .chord-row {',
+    '    gap: 14px 18px !important;',
+    '    align-items: flex-start !important;',
+    '    justify-content: center !important;',
+    '    flex-wrap: wrap !important;',
+    '    padding-inline: 10px;',
     '  }',
-    '  .tab-toggle-btn {',
-    '    min-height: 32px !important;',
-    '    padding-block: 4px !important;',
+    '  .chord-row.modal .chord-wrapper, .chord-row .chord-wrapper {',
+    '    min-height: 100px;',
+    '    display: flex; flex-direction: column; align-items: center; gap: 6px;',
+    '    margin: 0 !important; flex: 0 0 auto;',
+    '  }',
+    '  .chord-row.modal .chord-box, .chord-row .chord-box {',
+    '    margin-bottom: 4px; flex-shrink: 0;',
+    '  }',
+    '  .chord-row.modal .chord-wrapper > .interval-row,',
+    '  .chord-row.modal .chord-wrapper > .note-pills,',
+    '  .chord-row.modal .chord-wrapper > .scale-degrees,',
+    '  .chord-row .chord-wrapper > .interval-row,',
+    '  .chord-row .chord-wrapper > .note-pills,',
+    '  .chord-row .chord-wrapper > .scale-degrees {',
+    '    display: flex; flex-direction: row; flex-wrap: nowrap; gap: 2px;',
+    '    padding: 3px 4px;',
+    '    border: 1px solid rgba(255,255,255,0.08);',
+    '    border-radius: 4px;',
+    '    background: rgba(255,255,255,0.02);',
     '  }',
     '}',
     '',
-    '/* ─ Touch-target sweep ─ */',
+    '/* ── 20. Chord-shape size toggle ── */',
+    '@media (max-width: 640px) {',
+    '  .uz-shape-toggle-btn {',
+    '    position: fixed; right: 8px;',
+    '    bottom: calc(8px + env(safe-area-inset-bottom, 0px));',
+    '    z-index: 9000;',
+    '    background: rgba(26, 26, 40, 0.92);',
+    '    border: 1px solid rgba(212,168,83,0.6);',
+    '    color: #d4a853; padding: 8px 14px;',
+    '    border-radius: 999px;',
+    '    font-size: 12px; font-weight: 700;',
+    '    cursor: pointer;',
+    '    box-shadow: 0 4px 12px rgba(0,0,0,0.5);',
+    '    min-height: 38px;',
+    '  }',
+    '  .uz-shape-toggle-btn:active { transform: scale(0.96); }',
+    '  body.uz-shapes-compact .chord-diagrams,',
+    '  body.uz-shapes-compact .progression-line .chord-shape,',
+    '  body.uz-shapes-compact [class*="chord-shape"] {',
+    '    transform: scale(0.65); transform-origin: top left;',
+    '  }',
+    '  body.uz-shapes-compact [class*="chord-shape"] { margin-right: -35%; margin-bottom: -35%; }',
+    '  body.uz-shapes-names .chord-diagrams,',
+    '  body.uz-shapes-names .chord-shape,',
+    '  body.uz-shapes-names [class*="chord-shape"] { display: none !important; }',
+    '  body.uz-shapes-names .chord-name,',
+    '  body.uz-shapes-names .progression-line .chord-card .chord-name {',
+    '    font-size: 18px; padding: 8px 10px;',
+    '  }',
+    '}',
+    '',
+    '/* Touch-target sweep + key chips */',
     '@media (pointer: coarse) {',
-    '  /* Generic floor for buttons that aren\'t in a dense grid (chord-grid,',
-    '     fretboard, etc. opt out by being more specific elsewhere). */',
-    '  .chord-detail-close,',
-    '  .chord-picker-close,',
-    '  .key-finder-close,',
-    '  .playback-close,',
-    '  .file-close,',
-    '  .scale-popup .close-btn,',
-    '  #lyricsPanelClose,',
-    '  .lp-close-btn,',
-    '  .uz-dock-close {',
-    '    min-width: 44px;',
-    '    min-height: 44px;',
-    '    display: inline-flex;',
-    '    align-items: center;',
-    '    justify-content: center;',
+    '  .chord-detail-close, .chord-picker-close, .key-finder-close,',
+    '  .playback-close, .file-close, .scale-popup .close-btn,',
+    '  #lyricsPanelClose, .lp-close-btn, .uz-dock-close {',
+    '    min-width: 44px; min-height: 44px;',
+    '    display: inline-flex; align-items: center; justify-content: center;',
     '  }',
-    '  .chord-highlight-help-btn {',
-    '    min-width: 32px;',
-    '    min-height: 32px;',
-    '  }',
-    '  /* Top nav rail: each item gets ≥44px of hit area */',
+    '  .chord-highlight-help-btn { min-width: 32px; min-height: 32px; }',
     '  .uz-rail-item, .uz-rail-home { min-width: 44px; padding-inline: 9px; }',
-    '  /* LYRICS / RHYMES tabs inside the lyrics panel */',
     '  .lp-tab { min-height: 44px; padding-block: 10px; }',
     '}',
-    '',
-    '/* ─ Key-picker chips: re-flow to 6-up grid on phones ─ */',
     '@media (max-width: 480px) {',
-    '  .key-buttons-row {',
-    '    display: grid !important;',
-    '    grid-template-columns: repeat(6, minmax(0, 1fr));',
-    '    gap: 8px;',
-    '  }',
-    '  .key-buttons-row > * {',
-    '    min-width: 44px;',
-    '    min-height: 44px;',
-    '    width: 100% !important;',
-    '    height: auto !important;',
-    '    font-size: 14px;',
-    '  }',
+    '  .key-buttons-row { display: grid !important; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }',
+    '  .key-buttons-row > * { min-width: 44px; min-height: 44px; width: 100% !important; height: auto !important; font-size: 14px; }',
+    '  .repeat-btn { min-width: 32px !important; min-height: 32px !important; font-size: 12px !important; }',
+    '  .tab-toggle-btn { min-height: 32px !important; padding-block: 4px !important; }',
     '}',
     '',
-    '/* ─ RhymeForge standalone: quick-action button row ─ */',
-    '/* "Random Word", "Songwriter\'s Guide", "Info" clip text at 393vw.',
-    '   Allow wrapping and bump min height. */',
+    '/* RhymeForge quick-actions, Songwriter Guide panel, CollisionLab tabs */',
     '@media (max-width: 480px) {',
-    '  .quick-actions,',
-    '  .rf-quick-actions,',
-    '  [class*="quick-actions"] {',
-    '    flex-wrap: wrap !important;',
-    '    row-gap: 8px;',
+    '  .quick-actions, .rf-quick-actions, [class*="quick-actions"] {',
+    '    flex-wrap: wrap !important; row-gap: 8px;',
     '  }',
-    '  .quick-actions > button,',
-    '  .rf-quick-actions > button,',
-    '  [class*="quick-actions"] > button {',
-    '    flex: 1 1 calc(50% - 4px);',
-    '    min-height: 44px;',
-    '    white-space: normal;',
-    '    text-align: center;',
+    '  .quick-actions > button, .rf-quick-actions > button, [class*="quick-actions"] > button {',
+    '    flex: 1 1 calc(50% - 4px); min-height: 44px; white-space: normal; text-align: center;',
     '  }',
-    '  /* Songwriter\'s Guide panel — keep within viewport */',
-    '  #guidePanel,',
-    '  .guide-panel,',
-    '  .info-panel,',
-    '  #infoPanel {',
-    '    max-width: 100vw;',
-    '    width: min(720px, 100vw) !important;',
-    '    box-sizing: border-box;',
+    '  #guidePanel, .guide-panel, .info-panel, #infoPanel {',
+    '    max-width: 100vw; width: min(720px, 100vw) !important; box-sizing: border-box;',
     '    padding-inline: clamp(16px, 4vw, 32px) !important;',
     '  }',
-    '}',
-    '',
-    '/* ─ CollisionLab tab strip — horizontal scroll, no clipping ─ */',
-    '/* The Today / Open Lab / Field Guide / Lab Notebook strip clips the',
-    '   last tab. Reuse the scroll-strip pattern. We target both possible',
-    '   tab containers since CollisionLab uses tailwind classes. */',
-    '@media (max-width: 480px) {',
     '  .cl-tabs, .collisionlab-tabs, [role="tablist"] {',
-    '    overflow-x: auto;',
-    '    -webkit-overflow-scrolling: touch;',
-    '    flex-wrap: nowrap !important;',
-    '    scrollbar-width: none;',
-    '    padding-inline: 12px;',
+    '    overflow-x: auto; -webkit-overflow-scrolling: touch;',
+    '    flex-wrap: nowrap !important; scrollbar-width: none; padding-inline: 12px;',
     '  }',
-    '  .cl-tabs::-webkit-scrollbar,',
-    '  .collisionlab-tabs::-webkit-scrollbar,',
+    '  .cl-tabs::-webkit-scrollbar, .collisionlab-tabs::-webkit-scrollbar,',
     '  [role="tablist"]::-webkit-scrollbar { display: none; }',
-    '  .cl-tabs > *,',
-    '  .collisionlab-tabs > *,',
-    '  [role="tablist"] > * { flex: 0 0 auto; white-space: nowrap; }',
+    '  .cl-tabs > *, .collisionlab-tabs > *, [role="tablist"] > * { flex: 0 0 auto; white-space: nowrap; }',
     '}',
     '',
-    '/* ─ Generic intro modals (CollisionLab, SenseSpark) ─ */',
-    '/* Best-effort selectors — keep the cards scrollable so the "Got it"',
-    '   button is reachable. Selectors are deliberately broad. */',
-    '.intro-modal-card,',
-    '.info-modal-card,',
-    '[class*="intro-modal" i] > div,',
-    '[class*="info-modal" i] > div,',
+    '/* Generic intro-modal scroll + safe-area + a11y */',
+    '.intro-modal-card, .info-modal-card,',
+    '[class*="intro-modal" i] > div, [class*="info-modal" i] > div,',
     'div[role="dialog"] > div {',
     '  max-height: calc(var(--uz-vh) - 32px);',
-    '  overflow-y: auto;',
-    '  -webkit-overflow-scrolling: touch;',
+    '  overflow-y: auto; -webkit-overflow-scrolling: touch;',
     '}',
-    '',
-    '/* ─ Safe-area-inset support (notch, home indicator) ─ */',
-    '.uz-nav-rail,',
-    'nav.uz-nav-rail,',
-    '#uzNavRail {',
-    '  padding-top: env(safe-area-inset-top, 0px);',
+    '.uz-nav-rail, #uzNavRail { padding-top: env(safe-area-inset-top, 0px); }',
+    '.uz-site-footer { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }',
+    '@media (max-width: 768px) { body { overscroll-behavior-y: contain; } }',
+    '@media (hover: none) { button:active, .btn:active, a:active { transform: scale(.97); transition: transform 0.06s ease; } }',
+    'button:focus-visible, a:focus-visible, [role="button"]:focus-visible {',
+    '  outline: 2px solid #d4a853; outline-offset: 2px;',
     '}',
-    '.uz-site-footer {',
-    '  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));',
-    '}',
-    '',
-    '/* ─ Reduce rubber-band scroll under fixed overlays ─ */',
-    '@media (max-width: 768px) {',
-    '  body { overscroll-behavior-y: contain; }',
-    '}',
-    '',
-    '/* ─ :active feedback for touch devices ─ */',
-    '@media (hover: none) {',
-    '  button:active,',
-    '  .btn:active,',
-    '  a:active { transform: scale(.97); transition: transform 0.06s ease; }',
-    '}',
-    '',
-    '/* ─ :focus-visible — keyboard accessibility ─ */',
-    'button:focus-visible,',
-    'a:focus-visible,',
-    '[role="button"]:focus-visible {',
-    '  outline: 2px solid #d4a853;',
-    '  outline-offset: 2px;',
-    '}',
-    '',
     '/* ────── END MOBILE FIXES ────── */',
   ].join('\n');
 
