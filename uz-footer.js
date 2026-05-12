@@ -1,30 +1,10 @@
 /**
- * ════════════════════════════════════════════════════════════════════
  * Undercover Zest Suite — Footer  (uz-footer.js)
- * ════════════════════════════════════════════════════════════════════
- *
- * Self-contained, zero-dependency footer for the Undercover Zest
- * creative writing tool suite. Injects a consistent footer with
- * donation button, credit, and contact link at the bottom of any page.
- * No build step, no external CSS, no framework required.
- *
- * ── WHAT IT INJECTS ──────────────────────────────────────────────
- *
- *  1. <footer class="uz-site-footer">  — full footer HTML
- *  2. <style> in <head>                — all classes prefixed uz- to avoid collisions
- *                                       PLUS the suite-wide mobile-fixes pack
- *                                       (added 2026-05-12, see MOBILE FIXES section)
- *  3. Ko-fi floating widget script     — donation overlay chat widget
- *                                       (now deferred until welcome/intro modals dismiss)
- *  4. Mobile UX helpers                — key picker collapse, looper pill,
- *                                       chord shape size toggle (pass 2)
- *
- * ════════════════════════════════════════════════════════════════════
+ * See repo for full docs. 2026-05-12 mobile UX pass + hotfix.
  */
 (function () {
   'use strict';
 
-  // ── App definitions (mirrors uz-nav.js) ──────────────────────────
   var APPS = [
     { key: 'homepage',  match: ['/homepage', '/homepage/'] },
     { key: 'zest',      match: ['/index.html', '/'] },
@@ -34,9 +14,8 @@
     { key: 'sense',     match: ['/sensespark'] },
   ];
 
-  // ── Detect active page ────────────────────────────────────────────
   var path = window.location.pathname.replace(/\/+$/, '').toLowerCase();
-  var activeApp = 'zest'; // default
+  var activeApp = 'zest';
   APPS.forEach(function (a) {
     a.match.forEach(function (m) {
       if (path === m || path.indexOf(m + '/') === 0 || path.indexOf(m + '/index') === 0) {
@@ -45,10 +24,8 @@
     });
   });
 
-  // ── Determine footer variant ──────────────────────────────────────
   var variant = (activeApp === 'rhyme') ? 'compact' : 'full';
 
-  // ── Build footer HTML ─────────────────────────────────────────────
   var footerHTML;
   if (variant === 'compact') {
     footerHTML =
@@ -81,7 +58,7 @@
   container.innerHTML = footerHTML;
   document.body.appendChild(container.firstChild);
 
-  // ── Ko-fi widget loader (deferred until welcome/intro modal closes) ──
+  // ── Ko-fi widget (deferred until welcome modal closes) ──
   var isMorningPages = activeApp === 'morning' ||
     window.location.href.toLowerCase().indexOf('morningpages') !== -1;
 
@@ -159,7 +136,7 @@
   }
 
   // ────────────────────────────────────────────────────────────────
-  // ── Mobile UX helpers (pass 2 — added 2026-05-12)
+  // ── Mobile UX helpers (pass 2 with hotfix 2026-05-12)
   // ────────────────────────────────────────────────────────────────
   function isMobileWidth() { return window.innerWidth <= 640; }
 
@@ -168,7 +145,7 @@
     var body = document.body;
     if (!body) return;
 
-    // ── 16. Key picker collapsed by default on mobile ─────────────
+    // ── 16. Key picker collapsed by default ───────────────────────
     var keyCollapser = document.getElementById('keyCollapser');
     if (keyCollapser) {
       body.classList.add('uz-key-collapsed');
@@ -177,41 +154,86 @@
       });
     }
 
-    // ── 18. Loop / repeat buttons collapse to "×N ▾" pill ─────────
+    // ── 18. Loop / repeat collapse — HOTFIX-safe version ──────────
+    // Observer is now narrowly scoped to #progressionArea (where the
+    // line-repeats live), disconnects during the callback, and only
+    // writes textContent when it actually changes. This prevents the
+    // infinite-mutation loop that froze the page.
+    var looperObs = null;
+    var looperDebounce = null;
     function rebuildLooperPills() {
-      var groups = document.querySelectorAll('.line-repeats');
-      groups.forEach(function (g) {
-        if (g.dataset.uzMobileCollapsed === 'done') return;
-        g.dataset.uzMobileCollapsed = 'done';
-        var active = g.querySelector('.repeat-btn.active');
-        var label = active ? active.textContent.trim() : '1';
-        var pill = document.createElement('button');
-        pill.type = 'button';
-        pill.className = 'uz-mobile-loop-pill';
-        pill.setAttribute('aria-label', 'Repeat count');
-        pill.textContent = '×' + label + ' ▾';
-        pill.addEventListener('click', function (e) {
-          e.stopPropagation();
-          g.classList.toggle('uz-loop-expanded');
-        });
-        g.insertBefore(pill, g.firstChild);
-      });
-      document.querySelectorAll('.line-repeats .repeat-btn.active').forEach(function (a) {
-        var pill = a.parentElement.querySelector('.uz-mobile-loop-pill');
-        if (pill) pill.textContent = '×' + a.textContent.trim() + ' ▾';
-      });
-      document.querySelectorAll('.line-repeats.uz-loop-expanded .repeat-btn').forEach(function (b) {
-        if (b.dataset.uzClickWired === '1') return;
-        b.dataset.uzClickWired = '1';
-        b.addEventListener('click', function () {
-          var g = b.closest('.line-repeats');
-          if (g) setTimeout(function () { g.classList.remove('uz-loop-expanded'); }, 150);
-        });
-      });
+      // Disconnect before mutating so our own writes do not retrigger
+      if (looperObs) looperObs.disconnect();
+      try {
+        var groups = document.querySelectorAll('.line-repeats');
+        for (var i = 0; i < groups.length; i++) {
+          var g = groups[i];
+          if (g.dataset.uzMobileCollapsed !== 'done') {
+            g.dataset.uzMobileCollapsed = 'done';
+            var active = g.querySelector('.repeat-btn.active');
+            var label = active ? active.textContent.trim() : '1';
+            var pill = document.createElement('button');
+            pill.type = 'button';
+            pill.className = 'uz-mobile-loop-pill';
+            pill.setAttribute('aria-label', 'Repeat count');
+            pill.textContent = '×' + label + ' ▾';
+            pill.addEventListener('click', function (e) {
+              e.stopPropagation();
+              this.parentElement.classList.toggle('uz-loop-expanded');
+            });
+            g.insertBefore(pill, g.firstChild);
+          }
+          // Sync the pill label to the active button — but only if changed
+          var activeBtn = g.querySelector('.repeat-btn.active');
+          var pillEl = g.querySelector('.uz-mobile-loop-pill');
+          if (activeBtn && pillEl) {
+            var want = '×' + activeBtn.textContent.trim() + ' ▾';
+            if (pillEl.textContent !== want) pillEl.textContent = want;
+          }
+          // Wire each inner repeat-btn to auto-collapse after click
+          var btns = g.querySelectorAll('.repeat-btn');
+          for (var j = 0; j < btns.length; j++) {
+            var b = btns[j];
+            if (b.dataset.uzClickWired !== '1') {
+              b.dataset.uzClickWired = '1';
+              b.addEventListener('click', function () {
+                var parent = this.closest('.line-repeats');
+                if (parent) setTimeout(function () { parent.classList.remove('uz-loop-expanded'); }, 150);
+              });
+            }
+          }
+        }
+      } finally {
+        // Reconnect to a narrow target so we only react to progression renders
+        var target = document.getElementById('progressionArea');
+        if (looperObs && target) {
+          looperObs.observe(target, { childList: true, subtree: true });
+        }
+      }
+    }
+    function scheduleRebuild() {
+      if (looperDebounce) return;
+      looperDebounce = setTimeout(function () { looperDebounce = null; rebuildLooperPills(); }, 100);
     }
     setTimeout(rebuildLooperPills, 500);
-    var rerenderObs = new MutationObserver(function () { rebuildLooperPills(); });
-    rerenderObs.observe(document.body, { childList: true, subtree: true });
+    looperObs = new MutationObserver(function (mutations) {
+      // Ignore mutations we caused ourselves — only react to real
+      // app.js progression re-renders (childList changes on line cards).
+      for (var i = 0; i < mutations.length; i++) {
+        var m = mutations[i];
+        if (m.type === 'childList' && (m.addedNodes.length || m.removedNodes.length)) {
+          // Skip if the only change is adding our own pill
+          var only = true;
+          for (var k = 0; k < m.addedNodes.length; k++) {
+            var n = m.addedNodes[k];
+            if (!n.classList || !n.classList.contains('uz-mobile-loop-pill')) { only = false; break; }
+          }
+          if (!only) { scheduleRebuild(); return; }
+        }
+      }
+    });
+    var progArea = document.getElementById('progressionArea');
+    if (progArea) looperObs.observe(progArea, { childList: true, subtree: true });
 
     // ── 20. Chord-shape size toggle pill ───────────────────────────
     var SHAPE_STATES = ['', 'uz-shapes-compact', 'uz-shapes-names'];
@@ -255,13 +277,10 @@
 
   // ── Inject CSS ────────────────────────────────────────────────────
   var css = [
-    '/* ════════ UZ FOOTER (uz-footer.js) ════════ */',
     '.uz-footer--full {',
     '  background: linear-gradient(135deg, #1a1d24 0%, #22262e 100%);',
     '  border-top: 2px solid #c8a04a;',
-    '  padding: 24px 40px;',
-    '  margin-top: 40px;',
-    '  text-align: center;',
+    '  padding: 24px 40px; margin-top: 40px; text-align: center;',
     '  font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;',
     '}',
     '.uz-footer--full .uz-footer-content { max-width: 600px; margin: 0 auto; }',
@@ -286,17 +305,13 @@
     '  display: flex; align-items: center; justify-content: center;',
     '  gap: 0.5rem; flex-wrap: wrap; font-size: 0.78rem; color: #888;',
     '}',
-    '.uz-footer--compact .uz-footer-link { color: #888; text-decoration: none; transition: color 0.2s; }',
-    '.uz-footer--compact .uz-footer-link:hover { color: #d4a853; }',
+    '.uz-footer--compact .uz-footer-link { color: #888; text-decoration: none; }',
     '.uz-footer--compact .uz-footer-coffee { color: #c8a04a; }',
     '@media (max-width: 768px) { .uz-footer--full { padding: 20px 12px; } .uz-footer--full .uz-donation-btn { padding: 8px 18px; font-size: 13px; } }',
-    '',
-    '/* Ko-fi widget z-index */',
     '.floatingchat-container-wrap, .floatingchat-container-wrap-mo498, #kofi-widget-overlay-mo498 { z-index: 10002 !important; overflow: visible !important; }',
     '[class*="floatingchat"] iframe { border-radius: 12px !important; background: transparent !important; border: none !important; }',
     '[class*="floatingchat"], [id*="kofi"] { background: transparent !important; box-shadow: none !important; }',
     '',
-    '/* ════════ MOBILE FIXES (pass 1+2 — 2026-05-12) ════════ */',
     ':root { --uz-vh: 100vh; }',
     '@supports (height: 100dvh) { :root { --uz-vh: 100dvh; } }',
     '@media (max-width: 768px) {',
@@ -305,18 +320,15 @@
     '}',
     'html { -webkit-tap-highlight-color: rgba(212, 168, 83, 0.25); }',
     '',
-    '/* Welcome modal scrolls + sits above Ko-fi */',
     '.welcome-modal-overlay { z-index: 10010 !important; }',
     '.welcome-modal-card {',
     '  max-height: calc(var(--uz-vh) - 32px) !important;',
-    '  overflow-y: auto !important;',
-    '  -webkit-overflow-scrolling: touch;',
+    '  overflow-y: auto !important; -webkit-overflow-scrolling: touch;',
     '  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)) !important;',
     '}',
     'body:has(#welcomeModal:not(.hidden)) [class*="floatingchat"],',
     'body:has(#welcomeModal:not(.hidden)) [id^="kofi-"] { display: none !important; }',
     '',
-    '/* ── 17. Lyrics panel: full-width default + opt-in half-view ── */',
     '@media (max-width: 640px) {',
     '  .lyrics-panel.open { width: 100vw !important; }',
     '  .lyrics-panel.size-half { width: 50vw !important; }',
@@ -333,21 +345,17 @@
     '    display: inline-flex; align-items: center; justify-content: center; padding: 0;',
     '  }',
     '  body.lyrics-panel-open .lyrics-panel-tab { display: none !important; }',
-    '  .lyrics-panel .lp-body, .lyrics-panel .lp-pane {',
-    '    overflow-y: auto; -webkit-overflow-scrolling: touch;',
-    '  }',
+    '  .lyrics-panel .lp-body, .lyrics-panel .lp-pane { overflow-y: auto; -webkit-overflow-scrolling: touch; }',
     '  .lp-section-btns { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }',
     '  .lp-section-btns::-webkit-scrollbar { display: none; }',
     '}',
     '',
-    '/* ── 16. Key picker collapsed on mobile ── */',
     '@media (max-width: 640px) {',
     '  body.uz-key-collapsed #keyButtons { display: none !important; }',
     '  body.uz-key-collapsed #keyCollapser { display: inline-flex !important; }',
     '  #keyCollapser { min-height: 44px; padding-inline: 14px; font-size: 15px; }',
     '}',
     '',
-    '/* ── 18. Loop / repeat collapse on mobile ── */',
     '@media (max-width: 640px) {',
     '  .line-repeats { position: relative; gap: 4px !important; }',
     '  .line-repeats .repeats-label,',
@@ -364,38 +372,21 @@
     '  .uz-mobile-loop-pill:active { transform: scale(0.96); }',
     '}',
     '',
-    '/* ── 19. Modal-Interchange chord alignment + grouped notes ── */',
     '@media (max-width: 640px) {',
     '  .chord-row.modal, .chord-row {',
     '    gap: 14px 18px !important;',
     '    align-items: flex-start !important;',
     '    justify-content: center !important;',
-    '    flex-wrap: wrap !important;',
-    '    padding-inline: 10px;',
+    '    flex-wrap: wrap !important; padding-inline: 10px;',
     '  }',
     '  .chord-row.modal .chord-wrapper, .chord-row .chord-wrapper {',
     '    min-height: 100px;',
     '    display: flex; flex-direction: column; align-items: center; gap: 6px;',
     '    margin: 0 !important; flex: 0 0 auto;',
     '  }',
-    '  .chord-row.modal .chord-box, .chord-row .chord-box {',
-    '    margin-bottom: 4px; flex-shrink: 0;',
-    '  }',
-    '  .chord-row.modal .chord-wrapper > .interval-row,',
-    '  .chord-row.modal .chord-wrapper > .note-pills,',
-    '  .chord-row.modal .chord-wrapper > .scale-degrees,',
-    '  .chord-row .chord-wrapper > .interval-row,',
-    '  .chord-row .chord-wrapper > .note-pills,',
-    '  .chord-row .chord-wrapper > .scale-degrees {',
-    '    display: flex; flex-direction: row; flex-wrap: nowrap; gap: 2px;',
-    '    padding: 3px 4px;',
-    '    border: 1px solid rgba(255,255,255,0.08);',
-    '    border-radius: 4px;',
-    '    background: rgba(255,255,255,0.02);',
-    '  }',
+    '  .chord-row.modal .chord-box, .chord-row .chord-box { margin-bottom: 4px; flex-shrink: 0; }',
     '}',
     '',
-    '/* ── 20. Chord-shape size toggle ── */',
     '@media (max-width: 640px) {',
     '  .uz-shape-toggle-btn {',
     '    position: fixed; right: 8px;',
@@ -404,29 +395,22 @@
     '    background: rgba(26, 26, 40, 0.92);',
     '    border: 1px solid rgba(212,168,83,0.6);',
     '    color: #d4a853; padding: 8px 14px;',
-    '    border-radius: 999px;',
-    '    font-size: 12px; font-weight: 700;',
-    '    cursor: pointer;',
-    '    box-shadow: 0 4px 12px rgba(0,0,0,0.5);',
+    '    border-radius: 999px; font-size: 12px; font-weight: 700;',
+    '    cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5);',
     '    min-height: 38px;',
     '  }',
     '  .uz-shape-toggle-btn:active { transform: scale(0.96); }',
-    '  body.uz-shapes-compact .chord-diagrams,',
-    '  body.uz-shapes-compact .progression-line .chord-shape,',
-    '  body.uz-shapes-compact [class*="chord-shape"] {',
-    '    transform: scale(0.65); transform-origin: top left;',
+    '  body.uz-shapes-compact .chord-diagrams {',
+    '    transform: scale(0.7); transform-origin: top left;',
+    '    margin-bottom: -25%;',
     '  }',
-    '  body.uz-shapes-compact [class*="chord-shape"] { margin-right: -35%; margin-bottom: -35%; }',
-    '  body.uz-shapes-names .chord-diagrams,',
-    '  body.uz-shapes-names .chord-shape,',
-    '  body.uz-shapes-names [class*="chord-shape"] { display: none !important; }',
+    '  body.uz-shapes-names .chord-diagrams { display: none !important; }',
     '  body.uz-shapes-names .chord-name,',
     '  body.uz-shapes-names .progression-line .chord-card .chord-name {',
     '    font-size: 18px; padding: 8px 10px;',
     '  }',
     '}',
     '',
-    '/* Touch-target sweep + key chips */',
     '@media (pointer: coarse) {',
     '  .chord-detail-close, .chord-picker-close, .key-finder-close,',
     '  .playback-close, .file-close, .scale-popup .close-btn,',
@@ -445,7 +429,6 @@
     '  .tab-toggle-btn { min-height: 32px !important; padding-block: 4px !important; }',
     '}',
     '',
-    '/* RhymeForge quick-actions, Songwriter Guide panel, CollisionLab tabs */',
     '@media (max-width: 480px) {',
     '  .quick-actions, .rf-quick-actions, [class*="quick-actions"] {',
     '    flex-wrap: wrap !important; row-gap: 8px;',
@@ -466,7 +449,6 @@
     '  .cl-tabs > *, .collisionlab-tabs > *, [role="tablist"] > * { flex: 0 0 auto; white-space: nowrap; }',
     '}',
     '',
-    '/* Generic intro-modal scroll + safe-area + a11y */',
     '.intro-modal-card, .info-modal-card,',
     '[class*="intro-modal" i] > div, [class*="info-modal" i] > div,',
     'div[role="dialog"] > div {',
@@ -480,7 +462,6 @@
     'button:focus-visible, a:focus-visible, [role="button"]:focus-visible {',
     '  outline: 2px solid #d4a853; outline-offset: 2px;',
     '}',
-    '/* ────── END MOBILE FIXES ────── */',
   ].join('\n');
 
   var style = document.createElement('style');
