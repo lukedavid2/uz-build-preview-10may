@@ -1,6 +1,6 @@
 /**
  * Undercover Zest Suite — Footer  (uz-footer.js)
- * 2026-05-12 mobile UX pass 7.
+ * 2026-05-12 mobile UX pass 8 — lp-tabs-controls stack in half mode.
  */
 (function () {
   'use strict';
@@ -135,9 +135,7 @@
     }
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // Shape state — module-scoped so the Tools menu item shares it.
-  // ────────────────────────────────────────────────────────────────
+  // ── Shape state ────────────────────────────────────────────────
   var SHAPE_STATES = ['', 'uz-shapes-compact', 'uz-shapes-names'];
   var SHAPE_LABEL  = ['Shapes: Full', 'Shapes: Compact', 'Shapes: Names only'];
   var shapeIdx = 0;
@@ -170,9 +168,7 @@
     menu.appendChild(btn);
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // Mobile UX helpers
-  // ────────────────────────────────────────────────────────────────
+  // ── Mobile UX helpers ─────────────────────────────────────────
   function isMobileWidth() { return window.innerWidth <= 640; }
 
   function setupMobileEnhancements() {
@@ -180,7 +176,6 @@
     var body = document.body;
     if (!body) return;
 
-    // ── Key picker collapsed by default ───────────────────────────
     var keyCollapser = document.getElementById('keyCollapser');
     if (keyCollapser) {
       body.classList.add('uz-key-collapsed');
@@ -189,11 +184,6 @@
       });
     }
 
-    // ── Lyrics panel size: bypass transition, set inline width ────
-    // The panel has CSS `transition: width 0.3s`. App.js fires its own
-    // size handler on lp-size-btn clicks, and the interaction between
-    // that + our handler + the transition was leaving the panel stuck
-    // at the "from" width. Fix: disable transition during the change.
     var lyricsPanel = document.getElementById('lyricsPanel');
 
     function applyPanelWidth(width50) {
@@ -209,9 +199,6 @@
         lyricsPanel.classList.remove('size-half', 'size-third', 'size-quarter');
         lyricsPanel.style.setProperty('width', '100vw', 'important');
       }
-      // Restore the transition on the next frame so subsequent
-      // app.js-driven animations (e.g. opening / closing) still
-      // animate smoothly.
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
           if (lyricsPanel) lyricsPanel.style.removeProperty('transition');
@@ -253,8 +240,6 @@
       setPanelToFull();
     }
 
-    // Tap the ½ pill → opt into half-mode. Use capture phase so we
-    // run before app.js's delegated handler.
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.classList) return;
@@ -265,7 +250,6 @@
       }
     }, true);
 
-    // When the lyrics tab is tapped to OPEN the panel, force full
     var lyricsTab = document.getElementById('lyricsPanelTab');
     if (lyricsTab) {
       lyricsTab.addEventListener('click', function () {
@@ -275,7 +259,7 @@
 
     setTimeout(ensureFullPill, 500);
 
-    // ── Loop / repeat collapse — hotfixed observer ────────────────
+    // ── Loop / repeat collapse ────────────────────────────────────
     var looperObs = null;
     var looperDebounce = null;
     function rebuildLooperPills() {
@@ -425,6 +409,21 @@
     '  .lyrics-panel .lp-tabs-controls {',
     '    position: absolute; top: 6px; right: 4px;',
     '    margin-left: 0 !important; padding-right: 0 !important; gap: 4px;',
+    '  }',
+    '  /* In HALF mode the panel (~197px) is too narrow for absolute controls.',
+    '     Drop the absolute and let the controls flow to a second row so the',
+    '     RHYMES tab is no longer hidden behind the size pills. */',
+    '  .lyrics-panel.uz-user-half .lp-tabs {',
+    '    flex-wrap: wrap; padding-right: 0;',
+    '  }',
+    '  .lyrics-panel.uz-user-half .lp-tabs-controls {',
+    '    position: static !important;',
+    '    top: auto !important; right: auto !important;',
+    '    width: 100%; flex-basis: 100%;',
+    '    justify-content: flex-end;',
+    '    padding: 4px 8px !important;',
+    '    border-top: 1px solid rgba(255,255,255,0.06);',
+    '    background: rgba(0,0,0,0.18);',
     '  }',
     '  .lyrics-panel .lp-size-btn {',
     '    min-width: 32px; min-height: 32px;',
