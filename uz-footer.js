@@ -12,7 +12,10 @@
  *
  *  1. <footer class="uz-site-footer">  — full footer HTML
  *  2. <style> in <head>                — all classes prefixed uz- to avoid collisions
+ *                                       PLUS the suite-wide mobile-fixes pack
+ *                                       (added 2026-05-12, see MOBILE FIXES section)
  *  3. Ko-fi floating widget script     — donation overlay chat widget
+ *                                       (now deferred until welcome/intro modals dismiss)
  *
  * ── FOOTER VARIANTS ──────────────────────────────────────────────
  *
@@ -98,7 +101,7 @@
     footerHTML =
       '<footer class="uz-site-footer uz-footer--compact">' +
         '<div class="uz-footer-inline">' +
-          '<span class="uz-footer-credit">Made with \uD83C\uDF4B by Luke</span>' +
+          '<span class="uz-footer-credit">Made with 🍋 by Luke</span>' +
           '<span class="uz-footer-sep">&middot;</span>' +
           '<a href="mailto:tidbit-people.1u@icloud.com" class="uz-footer-link">Suggestions?</a>' +
           '<span class="uz-footer-sep">&middot;</span>' +
@@ -119,7 +122,7 @@
             '</div>' +
           '</div>' +
           '<div class="uz-footer-credit">' +
-            'Made with \uD83C\uDF4B by Luke' +
+            'Made with 🍋 by Luke' +
           '</div>' +
           '<div class="uz-footer-contact">' +
             'We love hearing from you if you have any suggestions, or love: <a href="mailto:tidbit-people.1u@icloud.com">Contact me</a>' +
@@ -134,37 +137,117 @@
   var footerEl = container.firstChild;
   document.body.appendChild(footerEl);
 
-  // ── Inject Ko-fi floating widget (skip on Morning Pages — it overlaps the sidebar) ──
+  // ────────────────────────────────────────────────────────────────
+  // ── Ko-fi widget loader (deferred until any intro/welcome modal closes)
+  //    (changed 2026-05-12 — fixes the bug where the floating Ko-fi
+  //     button covered the welcome-modal "Got it!" CTA on iPhone.)
+  // ────────────────────────────────────────────────────────────────
   var isMorningPages = activeApp === 'morning' ||
     window.location.href.toLowerCase().indexOf('morningpages') !== -1 ||
     window.location.href.toLowerCase().indexOf('morning-pages') !== -1 ||
     window.location.href.toLowerCase().indexOf('morning_pages') !== -1;
-  if (isMorningPages) {
-    // Morning Pages opts out of the floating Ko-fi widget
-  } else {
-  var kofiScript = document.createElement('script');
-  kofiScript.src = 'https://storage.ko-fi.com/cdn/scripts/overlay-widget.js';
-  kofiScript.onload = function () {
-    if (typeof kofiWidgetOverlay !== 'undefined') {
-      kofiWidgetOverlay.draw('undercoverzest', {
-        'type': 'floating-chat',
-        'floating-chat.donateButton.text': 'Buy me a coffee',
-        'floating-chat.donateButton.background-color': '#c8a04a',
-        'floating-chat.donateButton.text-color': '#fff'
-      });
-      // Ensure Ko-fi widget sits above nav and has no white background
-      setTimeout(function () {
-        var kofiEls = document.querySelectorAll('[class*="floatingchat"], [id*="kofi"]');
-        kofiEls.forEach(function (el) {
-          el.style.zIndex = '10002';
-          el.style.overflow = 'visible';
-          el.style.background = 'transparent';
-        });
-      }, 2000);
+
+  if (!isMorningPages) {
+    var kofiInjected = false;
+    function injectKofi() {
+      if (kofiInjected) return;
+      kofiInjected = true;
+      var kofiScript = document.createElement('script');
+      kofiScript.src = 'https://storage.ko-fi.com/cdn/scripts/overlay-widget.js';
+      kofiScript.onload = function () {
+        if (typeof kofiWidgetOverlay !== 'undefined') {
+          kofiWidgetOverlay.draw('undercoverzest', {
+            'type': 'floating-chat',
+            'floating-chat.donateButton.text': 'Buy me a coffee',
+            'floating-chat.donateButton.background-color': '#c8a04a',
+            'floating-chat.donateButton.text-color': '#fff'
+          });
+          // Ensure Ko-fi widget sits above nav and has no white background.
+          // Note: still below the welcome-modal-overlay (10010) — see mobile-fixes CSS.
+          setTimeout(function () {
+            var kofiEls = document.querySelectorAll('[class*="floatingchat"], [id*="kofi"]');
+            kofiEls.forEach(function (el) {
+              el.style.zIndex = '10002';
+              el.style.overflow = 'visible';
+              el.style.background = 'transparent';
+            });
+          }, 2000);
+        }
+      };
+      document.body.appendChild(kofiScript);
     }
-  };
-  document.body.appendChild(kofiScript);
-  } // end Ko-fi skip check
+
+    // Find any visible "welcome / intro" modal. We treat the following
+    // as gates: UZ root #welcomeModal, plus any element whose id/class
+    // contains "welcome", "intro", or whose role is "dialog" AND is
+    // currently visible.
+    function getActiveIntroModal() {
+      var candidates = document.querySelectorAll(
+        '#welcomeModal:not(.hidden),' +
+        '[id*="welcome" i][class*="modal" i]:not(.hidden),' +
+        '[id*="intro" i][class*="modal" i]:not(.hidden),' +
+        '[class*="welcome-modal" i]:not(.hidden),' +
+        '[class*="intro-modal" i]:not(.hidden)'
+      );
+      for (var i = 0; i < candidates.length; i++) {
+        var el = candidates[i];
+        var cs = window.getComputedStyle(el);
+        if (cs.display !== 'none' && cs.visibility !== 'hidden' &&
+            el.offsetWidth > 100 && el.offsetHeight > 100) {
+          return el;
+        }
+      }
+      return null;
+    }
+
+    function waitForModalDismissThenInject() {
+      var modal = getActiveIntroModal();
+      if (!modal) {
+        injectKofi();
+        return;
+      }
+      // Watch for the modal becoming hidden, OR for it being removed,
+      // OR for "Got it"/close button to be clicked.
+      var settled = false;
+      function maybeInject() {
+        if (settled) return;
+        var cs = window.getComputedStyle(modal);
+        if (!document.body.contains(modal) ||
+            modal.classList.contains('hidden') ||
+            cs.display === 'none' ||
+            cs.visibility === 'hidden') {
+          settled = true;
+          mo.disconnect();
+          injectKofi();
+        }
+      }
+      var mo = new MutationObserver(maybeInject);
+      mo.observe(modal, { attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+      mo.observe(document.body, { childList: true, subtree: false });
+      // Safety net: also poll once a second
+      var pollId = setInterval(function () {
+        maybeInject();
+        if (settled) clearInterval(pollId);
+      }, 1000);
+      // Absolute fallback — if the user just leaves the modal up for
+      // 60 seconds, go ahead and inject anyway so the donation widget
+      // isn't lost forever.
+      setTimeout(function () {
+        settled = true;
+        mo.disconnect();
+        clearInterval(pollId);
+        injectKofi();
+      }, 60000);
+    }
+
+    // Kick off after a microtask so any inline-script (like UZ root's
+    // welcome modal init at the bottom of index.html) has run first.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', waitForModalDismissThenInject, { once: true });
+    } else {
+      setTimeout(waitForModalDismissThenInject, 0);
+    }
+  } // end !isMorningPages
 
   // ── Inject CSS ────────────────────────────────────────────────────
   var css = [
@@ -354,6 +437,262 @@
     '  background: transparent !important;',
     '  border: none !important;',
     '}',
+    '',
+    '/* ════════════════════════════════════════════════════════════',
+    '   MOBILE FIXES (added 2026-05-12)',
+    '   Suite-wide mobile/iOS-Safari fixes — see',
+    '   mobile-optimization-recommendations.md for full audit.',
+    '   ════════════════════════════════════════════════════════════ */',
+    '',
+    '/* — Dynamic-viewport helper variable for iOS Safari.',
+    '     100vh on iOS overshoots when the URL bar is visible.',
+    '     We expose --uz-vh so any rule can opt in. */',
+    ':root { --uz-vh: 100vh; }',
+    '@supports (height: 100dvh) { :root { --uz-vh: 100dvh; } }',
+    '',
+    '/* — iOS auto-zoom on focus: forced to 16px on any text-entry',
+    '     element, EVERY page in the suite. The audit found 12+',
+    '     offenders (13-15px). Don\'t apply to checkbox/radio/range. */',
+    'input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),',
+    'textarea,',
+    'select {',
+    '  font-size: max(16px, 1rem);',
+    '}',
+    '',
+    '/* — Tap-highlight: use brand-gold tint instead of default gray box. */',
+    'html { -webkit-tap-highlight-color: rgba(212, 168, 83, 0.25); }',
+    '',
+    '/* ─ Welcome / intro modals — make scrollable on phones ─ */',
+    '/* UZ root inline-styled welcome modal (specificity needs to beat',
+    '   the inline <style> rules in index.html). We also raise the',
+    '   overlay z-index above the Ko-fi widget (10002) so the modal',
+    '   always wins the stacking war while it is open. */',
+    '.welcome-modal-overlay { z-index: 10010 !important; }',
+    '.welcome-modal-card {',
+    '  max-height: calc(var(--uz-vh) - 32px) !important;',
+    '  overflow-y: auto !important;',
+    '  -webkit-overflow-scrolling: touch;',
+    '  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)) !important;',
+    '}',
+    '/* Hide the Ko-fi widget while the welcome modal is open as a',
+    '   second line of defence (Safari 15.4+; older Safari falls back',
+    '   to the z-index rule above). */',
+    'body:has(#welcomeModal:not(.hidden)) [class*="floatingchat"],',
+    'body:has(#welcomeModal:not(.hidden)) [id^="kofi-"] {',
+    '  display: none !important;',
+    '}',
+    '',
+    '/* ─ Lyrics panel: go full-screen on mobile ─ */',
+    '/* At <=640px the size-half/third/quarter widths (50/33/25 vw)',
+    '   leave too little room — the close button and size pills',
+    '   overflow past the panel right edge, and the UZ chord workspace',
+    '   shrinks below usable width. Force full-width. */',
+    '@media (max-width: 640px) {',
+    '  .lyrics-panel.open,',
+    '  .lyrics-panel.size-half,',
+    '  .lyrics-panel.size-third,',
+    '  .lyrics-panel.size-quarter {',
+    '    width: 100vw !important;',
+    '  }',
+    '  .lyrics-panel { height: calc(var(--uz-vh) - var(--uz-rail-h, 52px)) !important; }',
+    '  /* Hide size pills on phones — they have no meaning at 100vw */',
+    '  .lyrics-panel .lp-size-btn { display: none !important; }',
+    '  /* Bump close × to a proper 44x44 tap target */',
+    '  .lyrics-panel .lp-close-btn {',
+    '    min-width: 44px;',
+    '    min-height: 44px;',
+    '    font-size: 22px;',
+    '    display: inline-flex;',
+    '    align-items: center;',
+    '    justify-content: center;',
+    '    padding: 0;',
+    '  }',
+    '  /* Hide the vertical "Lyrics" handle once the panel is full-width */',
+    '  body.lyrics-panel-open .lyrics-panel-tab { display: none !important; }',
+    '  /* And make sure the panel body scrolls its own content */',
+    '  .lyrics-panel .lp-body,',
+    '  .lyrics-panel .lp-pane {',
+    '    overflow-y: auto;',
+    '    -webkit-overflow-scrolling: touch;',
+    '  }',
+    '  /* Section buttons row inside the lyrics panel: scroll horizontally */',
+    '  .lp-section-btns {',
+    '    overflow-x: auto;',
+    '    -webkit-overflow-scrolling: touch;',
+    '    flex-wrap: nowrap;',
+    '    scrollbar-width: none;',
+    '  }',
+    '  .lp-section-btns::-webkit-scrollbar { display: none; }',
+    '}',
+    '',
+    '/* ─ Chord-line repeat buttons: scroll strip on phones ─ */',
+    '/* The Line row (☰ Line 1 × 1 2 3 4 ∞ Tab) does not fit when the',
+    '   workspace is constrained. Make the controls a horizontal scroll',
+    '   strip below 480px or whenever lyrics panel is open. */',
+    '@media (max-width: 480px) {',
+    '  .line-card .line-controls,',
+    '  .progression-line .line-controls,',
+    '  .line-row .repeat-controls,',
+    '  .repeat-controls {',
+    '    overflow-x: auto;',
+    '    -webkit-overflow-scrolling: touch;',
+    '    flex-wrap: nowrap !important;',
+    '    scrollbar-width: none;',
+    '  }',
+    '  .line-card .line-controls::-webkit-scrollbar,',
+    '  .progression-line .line-controls::-webkit-scrollbar,',
+    '  .repeat-controls::-webkit-scrollbar { display: none; }',
+    '  /* Bump repeat-btn tap target on touch devices */',
+    '  .repeat-btn {',
+    '    min-width: 32px !important;',
+    '    min-height: 32px !important;',
+    '    font-size: 12px !important;',
+    '  }',
+    '  .tab-toggle-btn {',
+    '    min-height: 32px !important;',
+    '    padding-block: 4px !important;',
+    '  }',
+    '}',
+    '',
+    '/* ─ Touch-target sweep ─ */',
+    '@media (pointer: coarse) {',
+    '  /* Generic floor for buttons that aren\'t in a dense grid (chord-grid,',
+    '     fretboard, etc. opt out by being more specific elsewhere). */',
+    '  .chord-detail-close,',
+    '  .chord-picker-close,',
+    '  .key-finder-close,',
+    '  .playback-close,',
+    '  .file-close,',
+    '  .scale-popup .close-btn,',
+    '  #lyricsPanelClose,',
+    '  .lp-close-btn,',
+    '  .uz-dock-close {',
+    '    min-width: 44px;',
+    '    min-height: 44px;',
+    '    display: inline-flex;',
+    '    align-items: center;',
+    '    justify-content: center;',
+    '  }',
+    '  .chord-highlight-help-btn {',
+    '    min-width: 32px;',
+    '    min-height: 32px;',
+    '  }',
+    '  /* Top nav rail: each item gets ≥44px of hit area */',
+    '  .uz-rail-item, .uz-rail-home { min-width: 44px; padding-inline: 9px; }',
+    '  /* LYRICS / RHYMES tabs inside the lyrics panel */',
+    '  .lp-tab { min-height: 44px; padding-block: 10px; }',
+    '}',
+    '',
+    '/* ─ Key-picker chips: re-flow to 6-up grid on phones ─ */',
+    '@media (max-width: 480px) {',
+    '  .key-buttons-row {',
+    '    display: grid !important;',
+    '    grid-template-columns: repeat(6, minmax(0, 1fr));',
+    '    gap: 8px;',
+    '  }',
+    '  .key-buttons-row > * {',
+    '    min-width: 44px;',
+    '    min-height: 44px;',
+    '    width: 100% !important;',
+    '    height: auto !important;',
+    '    font-size: 14px;',
+    '  }',
+    '}',
+    '',
+    '/* ─ RhymeForge standalone: quick-action button row ─ */',
+    '/* "Random Word", "Songwriter\'s Guide", "Info" clip text at 393vw.',
+    '   Allow wrapping and bump min height. */',
+    '@media (max-width: 480px) {',
+    '  .quick-actions,',
+    '  .rf-quick-actions,',
+    '  [class*="quick-actions"] {',
+    '    flex-wrap: wrap !important;',
+    '    row-gap: 8px;',
+    '  }',
+    '  .quick-actions > button,',
+    '  .rf-quick-actions > button,',
+    '  [class*="quick-actions"] > button {',
+    '    flex: 1 1 calc(50% - 4px);',
+    '    min-height: 44px;',
+    '    white-space: normal;',
+    '    text-align: center;',
+    '  }',
+    '  /* Songwriter\'s Guide panel — keep within viewport */',
+    '  #guidePanel,',
+    '  .guide-panel,',
+    '  .info-panel,',
+    '  #infoPanel {',
+    '    max-width: 100vw;',
+    '    width: min(720px, 100vw) !important;',
+    '    box-sizing: border-box;',
+    '    padding-inline: clamp(16px, 4vw, 32px) !important;',
+    '  }',
+    '}',
+    '',
+    '/* ─ CollisionLab tab strip — horizontal scroll, no clipping ─ */',
+    '/* The Today / Open Lab / Field Guide / Lab Notebook strip clips the',
+    '   last tab. Reuse the scroll-strip pattern. We target both possible',
+    '   tab containers since CollisionLab uses tailwind classes. */',
+    '@media (max-width: 480px) {',
+    '  .cl-tabs, .collisionlab-tabs, [role="tablist"] {',
+    '    overflow-x: auto;',
+    '    -webkit-overflow-scrolling: touch;',
+    '    flex-wrap: nowrap !important;',
+    '    scrollbar-width: none;',
+    '    padding-inline: 12px;',
+    '  }',
+    '  .cl-tabs::-webkit-scrollbar,',
+    '  .collisionlab-tabs::-webkit-scrollbar,',
+    '  [role="tablist"]::-webkit-scrollbar { display: none; }',
+    '  .cl-tabs > *,',
+    '  .collisionlab-tabs > *,',
+    '  [role="tablist"] > * { flex: 0 0 auto; white-space: nowrap; }',
+    '}',
+    '',
+    '/* ─ Generic intro modals (CollisionLab, SenseSpark) ─ */',
+    '/* Best-effort selectors — keep the cards scrollable so the "Got it"',
+    '   button is reachable. Selectors are deliberately broad. */',
+    '.intro-modal-card,',
+    '.info-modal-card,',
+    '[class*="intro-modal" i] > div,',
+    '[class*="info-modal" i] > div,',
+    'div[role="dialog"] > div {',
+    '  max-height: calc(var(--uz-vh) - 32px);',
+    '  overflow-y: auto;',
+    '  -webkit-overflow-scrolling: touch;',
+    '}',
+    '',
+    '/* ─ Safe-area-inset support (notch, home indicator) ─ */',
+    '.uz-nav-rail,',
+    'nav.uz-nav-rail,',
+    '#uzNavRail {',
+    '  padding-top: env(safe-area-inset-top, 0px);',
+    '}',
+    '.uz-site-footer {',
+    '  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));',
+    '}',
+    '',
+    '/* ─ Reduce rubber-band scroll under fixed overlays ─ */',
+    '@media (max-width: 768px) {',
+    '  body { overscroll-behavior-y: contain; }',
+    '}',
+    '',
+    '/* ─ :active feedback for touch devices ─ */',
+    '@media (hover: none) {',
+    '  button:active,',
+    '  .btn:active,',
+    '  a:active { transform: scale(.97); transition: transform 0.06s ease; }',
+    '}',
+    '',
+    '/* ─ :focus-visible — keyboard accessibility ─ */',
+    'button:focus-visible,',
+    'a:focus-visible,',
+    '[role="button"]:focus-visible {',
+    '  outline: 2px solid #d4a853;',
+    '  outline-offset: 2px;',
+    '}',
+    '',
+    '/* ────── END MOBILE FIXES ────── */',
   ].join('\n');
 
   var style = document.createElement('style');
