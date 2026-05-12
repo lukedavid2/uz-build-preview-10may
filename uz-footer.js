@@ -1,6 +1,6 @@
 /**
  * Undercover Zest Suite — Footer  (uz-footer.js)
- * 2026-05-12 mobile UX pass 3 (fixes to pass 2 regressions).
+ * 2026-05-12 mobile UX pass 4.
  */
 (function () {
   'use strict';
@@ -136,12 +136,8 @@
   }
 
   // ────────────────────────────────────────────────────────────────
-  // ── Mobile UX helpers (pass 3 — 2026-05-12)
+  // Shape state — module-scoped so the Tools menu item shares it.
   // ────────────────────────────────────────────────────────────────
-  function isMobileWidth() { return window.innerWidth <= 640; }
-
-  // SHAPE_STATES is at module scope so the Tools-menu button (built
-  // before mobile setup runs) can share state with the mobile hook.
   var SHAPE_STATES = ['', 'uz-shapes-compact', 'uz-shapes-names'];
   var SHAPE_LABEL  = ['Shapes: Full', 'Shapes: Compact', 'Shapes: Names only'];
   var shapeIdx = 0;
@@ -174,12 +170,17 @@
     menu.appendChild(btn);
   }
 
+  // ────────────────────────────────────────────────────────────────
+  // Mobile UX helpers
+  // ────────────────────────────────────────────────────────────────
+  function isMobileWidth() { return window.innerWidth <= 640; }
+
   function setupMobileEnhancements() {
     if (!isMobileWidth()) return;
     var body = document.body;
     if (!body) return;
 
-    // ── 16. Key picker collapsed by default ───────────────────────
+    // ── Key picker collapsed by default ───────────────────────────
     var keyCollapser = document.getElementById('keyCollapser');
     if (keyCollapser) {
       body.classList.add('uz-key-collapsed');
@@ -188,25 +189,15 @@
       });
     }
 
-    // ── 29 (fix). Lyrics panel: default FULL on mobile, only ½ and Full pills ──
-    // app.js attaches .size-half by default → strip it on tap so my
-    // .open { width: 100vw } rule wins. Also inject a "Full" pill so
-    // the user can toggle back from ½ to full.
-    var lyricsTab = document.getElementById('lyricsPanelTab');
+    // ── Lyrics panel: own the state, don't fight app.js ───────────
+    // On mobile, .lyrics-panel.open defaults to 100vw via CSS — the
+    // .size-half rule is NOT applied on mobile (see CSS). User opts
+    // into half-screen by tapping ½, which adds .uz-user-half.
     var lyricsPanel = document.getElementById('lyricsPanel');
-    if (lyricsTab && lyricsPanel) {
-      lyricsTab.addEventListener('click', function () {
-        // Defer to next frame so app.js gets to add classes first
-        requestAnimationFrame(function () {
-          lyricsPanel.classList.remove('size-half', 'size-third', 'size-quarter');
-        });
-      }, true);
-    }
-    // Inject "Full" pill into the .lp-tabs-controls row (mirror ½ style)
+
     function ensureFullPill() {
       var ctrls = document.querySelector('.lp-tabs-controls');
       if (!ctrls || document.getElementById('lpFullSizeBtn')) return;
-      // Find the close button so we insert BEFORE it
       var closeBtn = ctrls.querySelector('.lp-close-btn');
       var pill = document.createElement('button');
       pill.id = 'lpFullSizeBtn';
@@ -218,36 +209,39 @@
       pill.addEventListener('click', function (e) {
         e.stopPropagation();
         if (!lyricsPanel) return;
-        lyricsPanel.classList.remove('size-half', 'size-third', 'size-quarter');
-        // Update active state on size pills
-        ctrls.querySelectorAll('.lp-size-btn').forEach(function (b) { b.classList.remove('active'); });
-        pill.classList.add('active');
+        lyricsPanel.classList.remove('uz-user-half');
+        syncSizePillActiveState();
       });
       if (closeBtn) ctrls.insertBefore(pill, closeBtn);
       else ctrls.appendChild(pill);
-      // Mark the Full pill active on initial open (since default is full)
-      ctrls.querySelectorAll('.lp-size-btn').forEach(function (b) { b.classList.remove('active'); });
-      pill.classList.add('active');
+      syncSizePillActiveState();
+    }
+    function syncSizePillActiveState() {
+      var ctrls = document.querySelector('.lp-tabs-controls');
+      if (!ctrls || !lyricsPanel) return;
+      var isHalf = lyricsPanel.classList.contains('uz-user-half');
+      ctrls.querySelectorAll('.lp-size-btn').forEach(function (b) {
+        b.classList.remove('active');
+        if (b.id === 'lpFullSizeBtn' && !isHalf) b.classList.add('active');
+        if (b.dataset && b.dataset.lpSize === 'half' && isHalf) b.classList.add('active');
+      });
     }
     setTimeout(ensureFullPill, 500);
-    // Also keep the half pill toggling correctly — when user taps ½,
-    // app.js may not realize we removed size-half. Re-add it.
+    // Listen for taps on the ½ pill → opt into half-mode
     document.addEventListener('click', function (e) {
       var t = e.target;
-      if (!t || !t.classList || !t.classList.contains('lp-size-btn')) return;
-      if (t.id === 'lpFullSizeBtn') return;
-      if (lyricsPanel && t.dataset && t.dataset.lpSize === 'half') {
-        requestAnimationFrame(function () {
-          lyricsPanel.classList.add('size-half');
-          var ctrls = document.querySelector('.lp-tabs-controls');
-          if (ctrls) ctrls.querySelectorAll('.lp-size-btn').forEach(function (b) {
-            b.classList.toggle('active', b === t);
-          });
-        });
+      if (!t || !t.classList) return;
+      if (!t.classList.contains('lp-size-btn')) return;
+      if (t.id === 'lpFullSizeBtn') return; // handled above
+      if (t.dataset && t.dataset.lpSize === 'half') {
+        if (lyricsPanel) {
+          lyricsPanel.classList.add('uz-user-half');
+          syncSizePillActiveState();
+        }
       }
     }, true);
 
-    // ── 18. Loop / repeat collapse — pass-2 hotfixed version ──────
+    // ── Loop / repeat collapse — hotfixed observer ────────────────
     var looperObs = null;
     var looperDebounce = null;
     function rebuildLooperPills() {
@@ -291,9 +285,7 @@
         }
       } finally {
         var target = document.getElementById('progressionArea');
-        if (looperObs && target) {
-          looperObs.observe(target, { childList: true, subtree: true });
-        }
+        if (looperObs && target) looperObs.observe(target, { childList: true, subtree: true });
       }
     }
     function scheduleRebuild() {
@@ -319,7 +311,6 @@
   }
 
   function setupAlways() {
-    // Inject Shapes menu item on UZ root regardless of viewport (desktop too)
     setTimeout(injectShapesMenuItem, 600);
     applyShapeState(shapeIdx);
   }
@@ -391,15 +382,20 @@
     'body:has(#welcomeModal:not(.hidden)) [class*="floatingchat"],',
     'body:has(#welcomeModal:not(.hidden)) [id^="kofi-"] { display: none !important; }',
     '',
-    '/* ── Lyrics panel: mobile default = full-width, only ½ and Full pills ── */',
+    '/* ── Lyrics panel: own the width on mobile ──',
+    '   On mobile we ignore app.js\'s .size-half default and use our',
+    '   own .uz-user-half class as the half-mode opt-in. Default open',
+    '   is 100vw; user taps ½ to add .uz-user-half = 50vw. */',
     '@media (max-width: 640px) {',
     '  .lyrics-panel.open { width: 100vw !important; }',
-    '  .lyrics-panel.size-half { width: 50vw !important; }',
-    '  /* Hide ¼ and ⅓ pills on mobile (user only wants ½ and Full) */',
+    '  /* Override app.js\'s default .size-half on mobile back to 100vw */',
+    '  .lyrics-panel.open.size-half:not(.uz-user-half) { width: 100vw !important; }',
+    '  .lyrics-panel.open.uz-user-half { width: 50vw !important; }',
+    '  /* Hide ¼ and ⅓ pills — user only wants ½ and Full */',
     '  .lyrics-panel .lp-size-btn[data-lp-size="quarter"],',
     '  .lyrics-panel .lp-size-btn[data-lp-size="third"] { display: none !important; }',
     '  .lyrics-panel { height: calc(var(--uz-vh) - var(--uz-rail-h, 52px)) !important; }',
-    '  .lyrics-panel .lp-tabs { position: relative; padding-right: 92px; }',
+    '  .lyrics-panel .lp-tabs { position: relative; padding-right: 96px; }',
     '  .lyrics-panel .lp-tabs-controls {',
     '    position: absolute; top: 6px; right: 4px;',
     '    margin-left: 0 !important; padding-right: 0 !important; gap: 4px;',
@@ -408,7 +404,7 @@
     '    min-width: 32px; min-height: 32px;',
     '    font-size: 12px; padding: 2px 6px;',
     '  }',
-    '  .lyrics-panel .lp-size-btn.active { background: rgba(212,168,83,0.18); color: #d4a853; border-color: #d4a853; }',
+    '  .lyrics-panel .lp-size-btn.active { background: rgba(212,168,83,0.22); color: #d4a853; border-color: #d4a853; }',
     '  #lpFullSizeBtn { font-size: 14px; }',
     '  .lyrics-panel .lp-close-btn {',
     '    min-width: 44px; min-height: 44px; font-size: 22px;',
@@ -442,7 +438,7 @@
     '  .uz-mobile-loop-pill:active { transform: scale(0.96); }',
     '}',
     '',
-    '/* ── 30 (fix). Modal-Interchange alignment using REAL .chord-tones class ── */',
+    '/* Modal-Interchange equal-height + bordered notes box */',
     '@media (max-width: 640px) {',
     '  .chord-row.modal, .chord-row {',
     '    gap: 14px 18px !important;',
@@ -455,32 +451,23 @@
     '    display: flex; flex-direction: column; align-items: center; gap: 4px;',
     '    margin: 0 !important; flex: 0 0 auto;',
     '  }',
-    '  .chord-row.modal .chord-numeral, .chord-row .chord-numeral {',
-    '    min-height: 18px;',
-    '    line-height: 1;',
-    '  }',
-    '  .chord-row.modal .chord-box, .chord-row .chord-box {',
-    '    margin: 0 !important; flex-shrink: 0;',
-    '  }',
-    '  /* Wrap the R / 3 / 5 / note-name pills in a bordered group */',
+    '  .chord-row.modal .chord-numeral, .chord-row .chord-numeral { min-height: 18px; line-height: 1; }',
+    '  .chord-row.modal .chord-box, .chord-row .chord-box { margin: 0 !important; flex-shrink: 0; }',
     '  .chord-row.modal .chord-wrapper .chord-tones,',
     '  .chord-row .chord-wrapper .chord-tones {',
     '    display: flex; flex-direction: row; flex-wrap: nowrap;',
-    '    gap: 2px;',
-    '    padding: 3px 5px;',
+    '    gap: 2px; padding: 3px 5px;',
     '    border: 1px solid rgba(255,255,255,0.10);',
     '    border-radius: 4px;',
     '    background: rgba(255,255,255,0.03);',
     '    box-shadow: 0 1px 0 rgba(0,0,0,0.15);',
     '  }',
-    '  body.light-mode .chord-row .chord-wrapper .chord-tones,',
     '  body:not(.dark-mode) .chord-row .chord-wrapper .chord-tones {',
     '    border-color: rgba(0,0,0,0.08); background: rgba(0,0,0,0.02);',
     '  }',
     '}',
     '',
-    '/* ── 31 (fix). Shapes menu item lives in #toolButtons (not floating) ── */',
-    '/* Match the existing tool-buttons children style so it blends in */',
+    '/* Shapes menu item (lives in #toolButtons) */',
     '.uz-shapes-menu-item {',
     '  display: block; width: 100%; text-align: left;',
     '  padding: 8px 12px; margin: 2px 0;',
@@ -494,7 +481,7 @@
     '.uz-shapes-menu-item:hover { background: rgba(212,168,83,0.15); border-color: #d4a853; }',
     '.uz-shapes-menu-item:active { transform: scale(0.98); }',
     '',
-    '/* Compact mode: shrink the in-line mini chord diagrams */',
+    '/* Compact: shrink the mini diagrams in the progression row */',
     'body.uz-shapes-compact .mini-chord-svg {',
     '  width: 46px !important;',
     '  height: 64px !important;',
@@ -503,7 +490,7 @@
     '  padding: 6px 8px !important;',
     '  gap: 2px !important;',
     '}',
-    '/* Names-only mode: hide diagrams entirely; bump chord name */',
+    '/* Names-only: hide mini diagrams, bump chord name */',
     'body.uz-shapes-names .mini-chord-svg { display: none !important; }',
     'body.uz-shapes-names .progression-chord .chord-name { font-size: 1.05rem; padding: 4px 6px; }',
     '',
