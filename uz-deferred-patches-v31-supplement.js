@@ -1,12 +1,12 @@
 /**
- * uz-deferred-patches-v31-supplement.js  (v3.3 mobile updates)
+ * uz-deferred-patches-v31-supplement.js  (v3.4 mobile updates)
  *
  * Loaded by the bootstrap AFTER the v3 IIFE. Re-implements the four
- * v3 behaviours that v3 got wrong on mobile, plus v3.2/v3.3 user-
- * feedback iterations:
+ * v3 behaviours that v3 got wrong on mobile, plus v3.2/v3.3/v3.4
+ * user-feedback iterations:
  *   - shape-type input keyboard: QWERTY (with autocorrect off)
- *   - chord-tones layout: roomy zigzag rows with shadows + radius
- *   - header / logo: defensive max-height cap, no shrink overrides
+ *   - chord-tones: tight zigzag, no-overflow, smaller chips
+ *   - header: NO overrides (debug HTML now matches production)
  *   - iOS scroll-jump dampening on chord-shape input focus
  */
 (function () {
@@ -35,9 +35,6 @@
     if (body && fretboard && !body.querySelector('.uz-shape-type-row')) {
       var typeRow = document.createElement('div');
       typeRow.className = 'uz-shape-type-row';
-      // v3.3: revert to QWERTY (type=text). Numeric keypad lacked a
-      // space bar, which broke "x 10 12 0 0 0" double-digit entry.
-      // Suppress iOS autocorrect bar so the keyboard is clean.
       typeRow.innerHTML =
         '<label for="uzShapeTypeInput">Type:</label>' +
         '<input id="uzShapeTypeInput" class="uz-shape-type-input" type="text" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" pattern="[0-9xX\\- ]*" placeholder="x32010 or x 3 2 0 1 0">' +
@@ -230,12 +227,20 @@
     }
   }, true);
 
-  // ─── v3.3 CSS ──────────────────────────────────────────────────
+  // ─── v3.4 CSS ──────────────────────────────────────────────────
   var style = document.createElement('style');
   style.id = 'uzDeferredPatchesV31Style';
   style.textContent = [
     '@media (max-width: 480px) {',
-    // ── v3.3 chord-tones polish: roomy zigzag with shadows + radius
+    // ── v3.4 chord-tones: tuned smaller. v3.3 was too big (32px
+    //   chips + ±16px zigzag + width:max-content meant adjacent
+    //   chord-tones overlapped horizontally into the next chord
+    //   and adjacent progression-rows collided vertically).
+    //   v3.4 fixes: smaller chips (22px min-width), no width-
+    //   overflow (width:auto + max-width:100%), smaller zigzag
+    //   (±8px), tighter padding, plus overflow:hidden so chips
+    //   that would overflow the chord-wrapper bounds get clipped
+    //   instead of crossing into the neighbour.
     '  .chord-row .chord-wrapper,',
     '  .chord-row.modal .chord-wrapper {',
     '    overflow: visible !important;',
@@ -244,66 +249,64 @@
     '  .chord-row.modal .chord-wrapper .chord-tones,',
     '  .chord-tones {',
     '    flex-wrap: nowrap !important;',
-    '    overflow: visible !important;',
-    '    -webkit-overflow-scrolling: auto;',
-    '    gap: 5px !important;',
-    '    padding: 4px 6px !important;',
+    '    overflow: hidden !important;',
+    '    gap: 3px !important;',
+    '    padding: 2px 3px !important;',
     '    position: relative;',
     '    z-index: 1;',
-    '    width: max-content;',
-    '    max-width: none !important;',
-    '    border-radius: 8px;',
+    '    width: auto !important;',
+    '    max-width: 100% !important;',
+    '    border-radius: 6px;',
     '    background: rgba(255,255,255,0.025);',
+    '    justify-content: center;',
     '  }',
     '  .chord-row .chord-wrapper .chord-tones .tone-stack,',
     '  .chord-row.modal .chord-wrapper .chord-tones .tone-stack,',
     '  .chord-tones .tone-stack {',
-    '    min-width: 32px !important;',
-    '    flex-shrink: 0 !important;',
-    '    border-radius: 5px;',
+    '    min-width: 22px !important;',
+    '    flex: 0 1 auto !important;',
+    '    border-radius: 4px;',
     '    overflow: hidden;',
-    '    box-shadow: 0 1px 2px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.04) inset;',
+    '    box-shadow: 0 1px 1px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.03) inset;',
     '  }',
     '  .chord-tones .tone-top, .chord-tones .tone-bot {',
-    '    min-width: 30px;',
+    '    min-width: 20px;',
     '    text-align: center;',
-    '    padding: 2px 0;',
-    '    font-size: 11px;',
-    '    line-height: 1.2;',
+    '    padding: 1px 0;',
+    '    font-size: 10px;',
+    '    line-height: 1.15;',
     '  }',
     '  .chord-tones .tone-top {',
     '    font-weight: 700;',
     '  }',
+    // Smaller zigzag — ±8px (was ±16). Adjacent progression-row
+    // chord-tones now have plenty of vertical clearance from each
+    // other within the chord-row\'s 14px top+bottom padding.
     '  .chord-row .chord-wrapper:nth-child(odd) .chord-tones,',
     '  .chord-row.modal .chord-wrapper:nth-child(odd) .chord-tones {',
-    '    transform: translateY(-16px) !important;',
+    '    transform: translateY(-8px) !important;',
     '  }',
     '  .chord-row .chord-wrapper:nth-child(even) .chord-tones,',
     '  .chord-row.modal .chord-wrapper:nth-child(even) .chord-tones {',
-    '    transform: translateY(16px) !important;',
+    '    transform: translateY(8px) !important;',
     '  }',
     '  .chord-row .chords-container,',
     '  .chord-row.modal .chords-container {',
-    '    padding-top: 24px !important;',
-    '    padding-bottom: 24px !important;',
+    '    padding-top: 14px !important;',
+    '    padding-bottom: 14px !important;',
     '  }',
     '  .chord-tones .tone-stack:active {',
     '    transform: scale(0.94);',
     '    transition: transform 80ms ease-out;',
     '  }',
-    // ── v3.3 header: revert to production look. Only intervene with
-    //   a defensive max-height on the logo img (the lemon-logo.png
-    //   natural 2000x2000 would otherwise blow the header open on
-    //   debug-with-patches.html). Tagline + padding NOT overridden.
-    '  .container .logo-image,',
-    '  .container .header img {',
-    '    max-width: 64px !important;',
-    '    max-height: 64px !important;',
-    '    width: auto !important;',
-    '    height: auto !important;',
-    '    object-fit: contain;',
-    '  }',
-    '}',
+    // ── v3.4 header: NO overrides. debug-with-patches.html has
+    //   been updated to include class="logo-image" + the <div
+    //   class="tagline"> element, so the production styles in
+    //   styles.css (.logo-image{50×50, radius:10px, shadow},
+    //   .logo-container{white card, radius:12px, shadow},
+    //   .tagline{uppercase, letter-spaced}) now apply correctly.
+    //   No patch CSS needed.
+    '}',  // closes @media (max-width: 480px)
     // ── iOS scroll-jump dampening on chord-shape input focus
     '.uz-shape-type-input {',
     '  scroll-margin-bottom: 40vh;',
@@ -316,5 +319,5 @@
   ].join('\n');
   document.head.appendChild(style);
 
-  window.__uzPatchesV31 = { loaded: true, version: '3.3' };
+  window.__uzPatchesV31 = { loaded: true, version: '3.4' };
 })();
