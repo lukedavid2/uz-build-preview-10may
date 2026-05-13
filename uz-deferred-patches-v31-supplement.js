@@ -1,39 +1,18 @@
 /**
- * uz-deferred-patches-v31-supplement.js
+ * uz-deferred-patches-v31-supplement.js  (carries v3.2 mobile updates)
  *
- * Loaded by the bootstrap AFTER the v3 IIFE has run. v3's setupShape
- * EditorExtras attached an observer to the OLD overlay node, which
- * gets orphaned every time app.js re-renders the editor. This
- * supplement attaches a body-level childList observer that catches
- * every overlay (re-)mount, AND replaces v3's iOS-keyboard +
- * zoom-slider + chord-tones-CSS approaches with corrected versions.
- *
- * Five fixes applied:
- *
- * 1+2. Shape editor shift/type rows now re-inject on every overlay
- *      remount, because app.js does `overlay.remove(); appendChild(new)`
- *      on every fret tap / clear / nav. Body-childList observer catches
- *      these remounts.
- *
- * 3.   iOS keyboard: scoped MutationObserver on #progressionArea sees
- *      app.js's <input class="tab-cell-input"> as soon as it's added,
- *      sets type="tel" (the most reliable iOS-numeric-keypad trigger)
- *      + inputmode="numeric" + pattern="[0-9]*", and blur/refocuses
- *      to force iOS to refresh the keyboard type.
- *
- * 4.   Zoom slider: also observe body subtree + re-patch on every
- *      input event (in case app.js re-renders the slider mid-drag).
- *
- * 5.   Chord-tones: switch from wrap to horizontal scroll with bigger
- *      min-width. Higher-specificity selector beats app.js's
- *      `.chord-row.modal .chord-wrapper .chord-tones`.
+ * Loaded by the bootstrap AFTER the v3 IIFE. Re-implements the four
+ * v3 behaviours that v3 got wrong on mobile (chord-shape editor
+ * lifecycle observer, iOS keyboard, zoom slider min, chord-tones
+ * layout), plus v3.2 adds: shape-type-input numeric keypad, iOS
+ * scroll-jump dampening, chord-tones zigzag rows, and a mobile
+ * header/logo shrink.
  */
 (function () {
   'use strict';
 
   // ─── Fix 1+2: body-childList observer catches every overlay remount ───
   function injectShapeExtrasV31(overlay) {
-    // Re-implementation (v3's internal injectShapeExtras is closure-private).
     var nav = overlay.querySelector('.shape-fret-nav');
     if (nav && !nav.parentElement.querySelector('.uz-shape-shift-row')) {
       var shiftRow = document.createElement('div');
@@ -55,9 +34,10 @@
     if (body && fretboard && !body.querySelector('.uz-shape-type-row')) {
       var typeRow = document.createElement('div');
       typeRow.className = 'uz-shape-type-row';
+      // v3.2: type=tel + inputmode=numeric so iOS shows numeric keypad
       typeRow.innerHTML =
         '<label for="uzShapeTypeInput">Type:</label>' +
-        '<input id="uzShapeTypeInput" class="uz-shape-type-input" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="x32010 or x 3 2 0 1 0">' +
+        '<input id="uzShapeTypeInput" class="uz-shape-type-input" type="tel" inputmode="numeric" pattern="[0-9xX\\- ]*" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="x32010 or x 3 2 0 1 0">' +
         '<button type="button" class="uz-shape-type-go">Set</button>' +
         '<span class="uz-hint">low E → high E</span>';
       body.insertBefore(typeRow, fretboard);
@@ -177,7 +157,6 @@
     setTimeout(function () { placeFretsV31(next); }, 50);
   }
 
-  // The actual v3.1 fix 1+2: body-childList observer (NOT subtree).
   new MutationObserver(function (muts) {
     for (var i = 0; i < muts.length; i++) {
       var added = muts[i].addedNodes;
@@ -192,7 +171,7 @@
   var existingOverlay = document.getElementById('chordShapeOverlay');
   if (existingOverlay) injectShapeExtrasV31(existingOverlay);
 
-  // ─── Fix 3: iOS keyboard ──
+  // ─── Fix 3: iOS keyboard on melody-tab cell input ──
   var progressionArea = document.getElementById('progressionArea');
   if (progressionArea) {
     function patchTabCellInput(input) {
@@ -248,38 +227,86 @@
     }
   }, true);
 
-  // ─── Fix 5: chord-tones horizontal scroll ───
+  // ─── v3.2 CSS: zigzag chord-tones + mobile header shrink + scroll dampening ───
   var style = document.createElement('style');
   style.id = 'uzDeferredPatchesV31Style';
   style.textContent = [
     '@media (max-width: 480px) {',
+    // chord-tones: revert horizontal scroll; use alternating row offsets
+    '  .chord-row .chord-wrapper,',
+    '  .chord-row.modal .chord-wrapper {',
+    '    overflow: visible !important;',
+    '  }',
     '  .chord-row .chord-wrapper .chord-tones,',
     '  .chord-row.modal .chord-wrapper .chord-tones,',
     '  .chord-tones {',
     '    flex-wrap: nowrap !important;',
-    '    overflow-x: auto !important;',
-    '    overflow-y: hidden !important;',
-    '    -webkit-overflow-scrolling: touch;',
-    '    scrollbar-width: thin;',
-    '    gap: 4px !important;',
-    '    padding: 3px 4px !important;',
-    '    max-width: 100%;',
+    '    overflow: visible !important;',
+    '    -webkit-overflow-scrolling: auto;',
+    '    gap: 2px !important;',
+    '    padding: 1px 2px !important;',
+    '    position: relative;',
+    '    z-index: 1;',
+    '    width: max-content;',
+    '    max-width: none !important;',
     '  }',
     '  .chord-row .chord-wrapper .chord-tones .tone-stack,',
     '  .chord-row.modal .chord-wrapper .chord-tones .tone-stack,',
     '  .chord-tones .tone-stack {',
-    '    min-width: 28px !important;',
+    '    min-width: 26px !important;',
     '    flex-shrink: 0 !important;',
     '  }',
     '  .chord-tones .tone-top, .chord-tones .tone-bot {',
-    '    min-width: 26px;',
+    '    min-width: 24px;',
     '    text-align: center;',
     '  }',
-    '  .chord-tones::-webkit-scrollbar { height: 2px; }',
-    '  .chord-tones::-webkit-scrollbar-thumb { background: rgba(212,168,83,0.4); }',
+    '  .chord-row .chord-wrapper:nth-child(odd) .chord-tones,',
+    '  .chord-row.modal .chord-wrapper:nth-child(odd) .chord-tones {',
+    '    transform: translateY(-12px) !important;',
+    '  }',
+    '  .chord-row .chord-wrapper:nth-child(even) .chord-tones,',
+    '  .chord-row.modal .chord-wrapper:nth-child(even) .chord-tones {',
+    '    transform: translateY(12px) !important;',
+    '  }',
+    '  .chord-row .chords-container,',
+    '  .chord-row.modal .chords-container {',
+    '    padding-top: 16px !important;',
+    '    padding-bottom: 16px !important;',
+    '  }',
+    // v3.2 fix 3: compact mobile header / logo
+    '  .container .header {',
+    '    padding: 4px 0 !important;',
+    '    min-height: 0 !important;',
+    '    margin-bottom: 4px !important;',
+    '  }',
+    '  .container .logo-container {',
+    '    padding: 0 !important;',
+    '    margin: 0 !important;',
+    '    gap: 6px !important;',
+    '  }',
+    '  .container .logo-image {',
+    '    width: 24px !important;',
+    '    height: 24px !important;',
+    '  }',
+    '  .container .logo {',
+    '    font-size: 0.95rem !important;',
+    '    line-height: 1.2 !important;',
+    '  }',
+    '  .container .tagline {',
+    '    display: none !important;',
+    '  }',
+    '}',
+    // iOS scroll-jump dampening on chord-shape input focus
+    '.uz-shape-type-input {',
+    '  scroll-margin-bottom: 40vh;',
+    '  scroll-margin-top: 12vh;',
+    '}',
+    'body:has(#chordShapeOverlay) {',
+    '  overflow: hidden;',
+    '  overscroll-behavior: contain;',
     '}',
   ].join('\n');
   document.head.appendChild(style);
 
-  window.__uzPatchesV31 = { loaded: true, version: '3.1' };
+  window.__uzPatchesV31 = { loaded: true, version: '3.2' };
 })();
