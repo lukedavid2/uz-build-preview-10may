@@ -30,24 +30,45 @@
 (function () {
   'use strict';
 
+  // ────────────────────────────────────────────────────────────────
+  // Init — DEFERRED.
+  //
+  // Why deferred: on small viewports (393×734 iPhone-style), uz-footer.js's
+  // mobile rebuild logic + app.js's progression render trigger a cascade
+  // of DOM mutations during the first ~1s after DOMContentLoaded. If our
+  // observers attach DURING that cascade, the body-wide
+  // childList+subtree+attributes observers fire on every mutation and
+  // saturate the main thread — the renderer freezes and the page never
+  // finishes booting. (Same family of bug as the 2026-05-12 pass-2
+  // looper-pill infinite-observer hotfix; lineage in task #28.)
+  //
+  // The fix: wait 1500ms after DOMContentLoaded before attaching any of
+  // our observers/listeners (except the top-level click capture at the
+  // very bottom of this file, which is passive). By 1500ms, app.js +
+  // uz-footer have settled and the page is interactive.
+  // ────────────────────────────────────────────────────────────────
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', scheduleInit);
   } else {
-    init();
+    scheduleInit();
+  }
+
+  function scheduleInit() {
+    setTimeout(init, 1500);
   }
 
   function init() {
     injectStyles();
-    setupHintDotGate();         // item 1
-    setupShapeEditorExtras();   // items 2 + 3
+    setupHintDotGate();         // item 1 (now overlay-scoped)
+    setupShapeEditorExtras();   // items 2 + 3 (now click-triggered, no body observer)
     setupMismatchWarnings();    // item 4
-    setupMultiSelectDrag();     // item 5
-    setupTabBoundarySnapshot(); // item 6
+    setupMultiSelectDrag();     // item 5 (long-press scoped to progression area)
+    setupTabBoundarySnapshot(); // item 6 (defensive — skip if growth > 1)
   }
 
-  // ───────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────
   // Shared CSS
-  // ───────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────
   function injectStyles() {
     var css = [
       // Item 1 — hide hint-dots until at least one fret placed
@@ -185,45 +206,88 @@
     document.head.appendChild(style);
   }
 
-  // ══════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
   // Item 1: hide hint-dots until user places at least one fret
-  // ══════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
   function setupHintDotGate() {
+    // NARROW observer scope: attach a MutationObserver ONLY when the
+    // chord-shape editor is open, and ONLY observe the overlay subtree
+    // (not document.body). Disconnect when the overlay closes.
+    //
+    // The previous body-wide observer with attributes:['class'] fired
+    // on every class change anywhere on the page — which on mobile
+    // combined with uz-footer.js's rebuild logic caused a cascade
+    // that froze the renderer (task #28 lineage).
+    var hintObs = null;
     function check() {
       var overlay = document.getElementById('chordShapeOverlay');
       if (!overlay) {
         document.body.classList.remove('uz-shape-clean');
+        if (hintObs) { hintObs.disconnect(); hintObs = null; }
         return;
       }
       var hasPlaced = overlay.querySelector('.shape-fret-cell.active');
       document.body.classList.toggle('uz-shape-clean', !hasPlaced);
     }
-    new MutationObserver(check).observe(document.body, {
-      childList: true, subtree: true,
-      attributes: true, attributeFilter: ['class'],
-    });
-    check();
+    function attachOverlayObs() {
+      var overlay = document.getElementById('chordShapeOverlay');
+      if (!overlay) return;
+      check();
+      if (hintObs) hintObs.disconnect();
+      hintObs = new MutationObserver(check);
+      hintObs.observe(overlay, {
+        childList: true, subtree: true,
+        attributes: true, attributeFilter: ['class'],
+      });
+    }
+    // Open: hook the editChordShape click; defer to next tick so
+    // app.js can mount the overlay first.
+    document.addEventListener('click', function (e) {
+      var t = e.target && e.target.closest && e.target.closest('[data-action="editChordShape"]');
+      if (!t) return;
+      setTimeout(attachOverlayObs, 50);
+      setTimeout(attachOverlayObs, 250);
+    }, true);
+    // Close: hook common close actions; re-run check (which disconnects
+    // when the overlay is gone).
+    document.addEventListener('click', function (e) {
+      var t = e.target && e.target.closest && e.target.closest(
+        '[data-action="closeChordShape"], [data-action="saveChordShape"], [data-action="cancelChordShape"], [data-action="clearChordShape"]'
+      );
+      if (!t) return;
+      setTimeout(check, 200);
+    }, true);
   }
 
-  // ══════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
   // Items 2 + 3: shape-shift buttons + type-to-enter input
-  // ══════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
   function setupShapeEditorExtras() {
-    new MutationObserver(function () {
+    // NARROW: previous body-wide subtree observer fired on every
+    // descendant DOM mutation. Replace with a click-triggered poll
+    // that only runs when the user opens the chord-shape editor.
+    function tryInject() {
       var overlay = document.getElementById('chordShapeOverlay');
       if (overlay && !overlay.dataset.uzExtrasInjected) {
         overlay.dataset.uzExtrasInjected = '1';
         injectShapeExtras(overlay);
       }
-    }).observe(document.body, { childList: true, subtree: true });
-    var existing = document.getElementById('chordShapeOverlay');
-    if (existing && !existing.dataset.uzExtrasInjected) {
-      existing.dataset.uzExtrasInjected = '1';
-      injectShapeExtras(existing);
     }
+    document.addEventListener('click', function (e) {
+      var t = e.target && e.target.closest && e.target.closest('[data-action="editChordShape"]');
+      if (!t) return;
+      // App.js mounts the overlay asynchronously; poll a few times.
+      setTimeout(tryInject, 50);
+      setTimeout(tryInject, 200);
+      setTimeout(tryInject, 500);
+    }, true);
+    // Initial pass: handle the rare case where the editor is already
+    // open when the patches' deferred init runs.
+    tryInject();
   }
 
   function injectShapeExtras(overlay) {
+    // ── Item 2: shift ↑ / ↓ buttons in/near the fret-nav row ────
     var nav = overlay.querySelector('.shape-fret-nav');
     if (nav && !nav.parentElement.querySelector('.uz-shape-shift-row')) {
       var shiftRow = document.createElement('div');
@@ -241,6 +305,7 @@
       });
     }
 
+    // ── Item 3: type-to-enter input ABOVE the fretboard ─────────
     var body = overlay.querySelector('.shape-editor-body');
     var fretboard = overlay.querySelector('.shape-fretboard');
     if (body && fretboard && !body.querySelector('.uz-shape-type-row')) {
@@ -262,6 +327,7 @@
       input.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); apply(); }
       });
+      // Pre-populate from current state in the editor
       input.value = readCurrentFretString(overlay);
     }
   }
@@ -329,13 +395,9 @@
     for (var s = 0; s < 6; s++) {
       var t = target[s];
       var header = stringHeaders[s];
-      if (t === null) {
-        cycleStringHeader(header, 'X');
-      } else if (t === 0) {
-        cycleStringHeader(header, 'O');
-      } else {
-        clickFretAtAbsolute(s, t);
-      }
+      if (t === null) cycleStringHeader(header, 'X');
+      else if (t === 0) cycleStringHeader(header, 'O');
+      else clickFretAtAbsolute(s, t);
     }
   }
 
@@ -396,9 +458,9 @@
     setTimeout(function () { placeFrets(next); }, 30);
   }
 
-  // ══════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
   // Item 4: chord-name-mismatch warning on progression cards
-  // ══════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
   var mismatchByCardKey = Object.create(null);
 
   document.addEventListener('click', function (e) {
@@ -437,8 +499,9 @@
   function setupMismatchWarnings() {
     var area = document.getElementById('progressionArea');
     if (!area) return;
-    new MutationObserver(function () { applyMismatchBadges(); })
-      .observe(area, { childList: true, subtree: true });
+    new MutationObserver(function () {
+      applyMismatchBadges();
+    }).observe(area, { childList: true, subtree: true });
     setTimeout(applyMismatchBadges, 500);
   }
 
@@ -512,34 +575,42 @@
     return allExpectedFound && noOutside;
   }
 
-  // ══════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
   // Item 5: multi-select + drag-reorder
-  // ══════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
   var selected = new Set();
   var selectMode = false;
 
-  function ckey(line, idx) { return line + ':' + idx; }
-  function cardKey(card) { return ckey(card.getAttribute('data-line'), card.getAttribute('data-idx')); }
+  function key(line, idx) { return line + ':' + idx; }
+  function cardKey(card) { return key(card.getAttribute('data-line'), card.getAttribute('data-idx')); }
 
   function setupMultiSelectDrag() {
+    // ── Desktop multi-select: shift-click / cmd-click ───────────
     document.addEventListener('click', function (e) {
       var card = e.target.closest && e.target.closest('.progression-chord');
       if (!card) return;
       if (e.shiftKey) {
-        e.preventDefault(); e.stopImmediatePropagation();
+        e.preventDefault();
+        e.stopImmediatePropagation();
         extendSelection(card);
       } else if (e.metaKey || e.ctrlKey) {
-        e.preventDefault(); e.stopImmediatePropagation();
+        e.preventDefault();
+        e.stopImmediatePropagation();
         toggleSelection(card);
       } else if (selectMode) {
-        e.preventDefault(); e.stopImmediatePropagation();
+        e.preventDefault();
+        e.stopImmediatePropagation();
         toggleSelection(card);
       }
     }, true);
 
+    // ── Mobile long-press to enter select mode ──────────────────
+    // SCOPED to #progressionArea instead of document.
     var pressTimer = null;
     var pressStart = null;
-    document.addEventListener('pointerdown', function (e) {
+    var progArea = document.getElementById('progressionArea');
+    var pdHost = progArea || document;
+    pdHost.addEventListener('pointerdown', function (e) {
       if (e.pointerType !== 'touch') return;
       var card = e.target.closest && e.target.closest('.progression-chord');
       if (!card) return;
@@ -585,7 +656,8 @@
       var ghost = document.createElement('div');
       ghost.className = 'uz-drag-ghost';
       ghost.textContent = members.length + ' chords';
-      ghost.style.position = 'absolute'; ghost.style.top = '-1000px';
+      ghost.style.position = 'absolute';
+      ghost.style.top = '-1000px';
       document.body.appendChild(ghost);
       try { e.dataTransfer.setDragImage(ghost, 40, 16); } catch (err) {}
       setTimeout(function () { ghost.remove(); }, 200);
@@ -603,7 +675,8 @@
       var members = JSON.parse(multi);
       var dropTarget = e.target.closest('.progression-chord, .line-chords');
       if (!dropTarget) return;
-      e.preventDefault(); e.stopImmediatePropagation();
+      e.preventDefault();
+      e.stopImmediatePropagation();
       doMultiMove(members, dropTarget);
     }, true);
   }
@@ -621,7 +694,9 @@
     if (existingIdx === -1) { toggleSelection(card); return; }
     var lo = Math.min(existingIdx, newIdx);
     var hi = Math.max(existingIdx, newIdx);
-    for (var i = lo; i <= hi; i++) selected.add(cardKey(siblings[i]));
+    for (var i = lo; i <= hi; i++) {
+      selected.add(cardKey(siblings[i]));
+    }
     refreshSelectionDOM();
   }
 
@@ -696,7 +771,7 @@
     var insertBeforeIsContainer = dropTarget.classList.contains('line-chords');
     var cx = insertBeforeIsContainer ? rect.right - 4 : rect.left + 8;
     var cy = rect.top + rect.height / 2;
-    members.forEach(function (k) {
+    members.forEach(function (k, i) {
       var parts = k.split(':');
       var sel = '.progression-chord[data-line="' + parts[0] + '"][data-idx="' + parts[1] + '"]';
       var src = document.querySelector(sel);
@@ -704,14 +779,14 @@
       var dt = new DataTransfer();
       try { dt.setData('text/plain', parts.join(',')); } catch (err) {}
       try { dt.setData('application/x-uz-single', parts.join(',')); } catch (err) {}
-      var ds = new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt });
-      src.dispatchEvent(ds);
-      var dov = new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: cx, clientY: cy });
-      dropTarget.dispatchEvent(dov);
-      var dp = new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: cx, clientY: cy });
-      dropTarget.dispatchEvent(dp);
-      var de = new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: dt });
-      src.dispatchEvent(de);
+      var dragstart = new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt });
+      src.dispatchEvent(dragstart);
+      var dragover = new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: cx, clientY: cy });
+      dropTarget.dispatchEvent(dragover);
+      var drop = new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: cx, clientY: cy });
+      dropTarget.dispatchEvent(drop);
+      var dragend = new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: dt });
+      src.dispatchEvent(dragend);
     });
     selected.clear();
     refreshSelectionDOM();
@@ -755,7 +830,7 @@
     }
     pdState.lastTarget = dt;
   }
-  function onPointerUp() {
+  function onPointerUp(e) {
     if (!pdState) return;
     pdState.ghost.remove();
     if (pdState.lastTarget) {
@@ -765,9 +840,9 @@
     pdState = null;
   }
 
-  // ══════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
   // Item 6: melody/tab — snapshot & restore chord boundaries
-  // ══════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
   var boundarySnapshots = Object.create(null);
 
   function setupTabBoundarySnapshot() {
@@ -775,11 +850,16 @@
     if (!area) return;
     new MutationObserver(function () {
       document.querySelectorAll('.tab-grid').forEach(function (grid) {
-        var lineEl = grid.closest('.progression-line') || grid.closest('.line-card');
+        var lineEl = grid.closest('[data-line]');
+        if (!lineEl) {
+          lineEl = grid.closest('.progression-line') || grid.closest('.line-card');
+        }
         if (!lineEl) return;
-        var lineIdx = null;
-        var lc = lineEl.querySelector('.line-chords[data-line]');
-        if (lc) lineIdx = lc.getAttribute('data-line');
+        var lineIdx = lineEl.getAttribute('data-line');
+        if (lineIdx === null) {
+          var lc = lineEl.querySelector('.line-chords[data-line]');
+          if (lc) lineIdx = lc.getAttribute('data-line');
+        }
         if (lineIdx === null) return;
         snapshotOrRestore(parseInt(lineIdx, 10), grid);
       });
@@ -802,17 +882,23 @@
       boundarySnapshots[lineIdx] = { boundaries: boundaries.slice(), tabLen: colCount };
       return;
     }
-    if (boundaries.length > snap.boundaries.length) {
+    // Detect recompute: count grew by EXACTLY 1, AND boundaries are
+    // perfectly even-split. The +1 guard is defensive — batch updates
+    // (paste, undo) that grow by >1 fall through without restore,
+    // avoiding re-render loops.
+    var growth = boundaries.length - snap.boundaries.length;
+    if (growth === 1) {
       var expected = [];
       for (var i = 0; i < boundaries.length; i++) {
         expected.push(Math.floor(i * colCount / boundaries.length));
       }
       expected[0] = 0;
-      var isEvenSplit = boundaries.every(function (b, i) { return Math.abs(b - expected[i]) <= 1; });
+      var isEvenSplit = boundaries.every(function (b, i) {
+        return Math.abs(b - expected[i]) <= 1;
+      });
       if (isEvenSplit && snap.boundaries.length > 1) {
         var desired = snap.boundaries.slice();
-        var newCount = boundaries.length - snap.boundaries.length;
-        for (var n = 0; n < newCount; n++) desired.push(snap.tabLen + n);
+        desired.push(snap.tabLen);
         restoreBoundaries(lineIdx, grid, desired);
       }
     }
