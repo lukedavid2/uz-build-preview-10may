@@ -1,18 +1,17 @@
 /**
- * uz-deferred-patches-v31-supplement.js  (v3.4 mobile updates)
+ * uz-deferred-patches-v31-supplement.js  (v3.5 mobile updates)
  *
  * Loaded by the bootstrap AFTER the v3 IIFE. Re-implements the four
- * v3 behaviours that v3 got wrong on mobile, plus v3.2/v3.3/v3.4
+ * v3 behaviours that v3 got wrong on mobile, plus v3.2-v3.5
  * user-feedback iterations:
- *   - shape-type input keyboard: QWERTY (with autocorrect off)
- *   - chord-tones: tight zigzag, no-overflow, smaller chips
+ *   - shape-type input keyboard: numeric keypad + in-app SPACE/X buttons
+ *   - chord-tones: TRUE two-row layout (no vertical overlap), 18px chips
  *   - header: NO overrides (debug HTML now matches production)
  *   - iOS scroll-jump dampening on chord-shape input focus
  */
 (function () {
   'use strict';
 
-  // ─── Fix 1+2: body-childList observer catches every overlay remount ───
   function injectShapeExtrasV31(overlay) {
     var nav = overlay.querySelector('.shape-fret-nav');
     if (nav && !nav.parentElement.querySelector('.uz-shape-shift-row')) {
@@ -35,9 +34,12 @@
     if (body && fretboard && !body.querySelector('.uz-shape-type-row')) {
       var typeRow = document.createElement('div');
       typeRow.className = 'uz-shape-type-row';
+      // v3.5: numeric keypad + in-app SPACE/X buttons
       typeRow.innerHTML =
         '<label for="uzShapeTypeInput">Type:</label>' +
-        '<input id="uzShapeTypeInput" class="uz-shape-type-input" type="text" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" pattern="[0-9xX\\- ]*" placeholder="x32010 or x 3 2 0 1 0">' +
+        '<input id="uzShapeTypeInput" class="uz-shape-type-input" type="tel" inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" pattern="[0-9xX\\- ]*" placeholder="x32010 or x 3 2 0 1 0">' +
+        '<button type="button" class="uz-shape-type-insert" data-uz-insert=" " title="Insert space">␣</button>' +
+        '<button type="button" class="uz-shape-type-insert" data-uz-insert="x" title="Insert x for muted">x</button>' +
         '<button type="button" class="uz-shape-type-go">Set</button>' +
         '<span class="uz-hint">low E → high E</span>';
       body.insertBefore(typeRow, fretboard);
@@ -53,6 +55,27 @@
       goBtn.addEventListener('click', apply);
       input.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); apply(); }
+      });
+      // Insert-at-cursor handler for SPACE / X buttons. Focuses the
+      // input within the same touch task so iOS keeps the numeric
+      // keypad open.
+      typeRow.addEventListener('click', function (e) {
+        var btn = e.target.closest && e.target.closest('[data-uz-insert]');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var ch = btn.getAttribute('data-uz-insert');
+        try { input.focus({ preventScroll: true }); } catch (err) { input.focus(); }
+        var start = (input.selectionStart != null) ? input.selectionStart : input.value.length;
+        var end = (input.selectionEnd != null) ? input.selectionEnd : input.value.length;
+        if (typeof input.setRangeText === 'function') {
+          input.setRangeText(ch, start, end, 'end');
+        } else {
+          input.value = input.value.slice(0, start) + ch + input.value.slice(end);
+          var pos = start + ch.length;
+          input.setSelectionRange(pos, pos);
+        }
+        input.dispatchEvent(new Event('input', { bubbles: true }));
       });
       input.value = readCurrentFretStringV31(overlay);
     }
@@ -171,7 +194,7 @@
   var existingOverlay = document.getElementById('chordShapeOverlay');
   if (existingOverlay) injectShapeExtrasV31(existingOverlay);
 
-  // ─── Fix 3: iOS keyboard on melody-tab cell input (keeps numeric) ──
+  // Melody-tab cell input — numeric keypad
   var progressionArea = document.getElementById('progressionArea');
   if (progressionArea) {
     function patchTabCellInput(input) {
@@ -204,7 +227,7 @@
     }).observe(progressionArea, { childList: true, subtree: true });
   }
 
-  // ─── Fix 4: zoom slider min ── multi-layered ───
+  // Zoom slider min
   function patchZoomSlider(slider) {
     if (!slider) return;
     if (slider.getAttribute('min') !== '0.2') slider.setAttribute('min', '0.2');
@@ -227,87 +250,118 @@
     }
   }, true);
 
-  // ─── v3.4 CSS ──────────────────────────────────────────────────
+  // ─── v3.5 CSS ──────────────────────────────────────────────────
   var style = document.createElement('style');
   style.id = 'uzDeferredPatchesV31Style';
   style.textContent = [
     '@media (max-width: 480px) {',
-    // ── v3.4 chord-tones: tuned smaller. v3.3 was too big (32px
-    //   chips + ±16px zigzag + width:max-content meant adjacent
-    //   chord-tones overlapped horizontally into the next chord
-    //   and adjacent progression-rows collided vertically).
-    //   v3.4 fixes: smaller chips (22px min-width), no width-
-    //   overflow (width:auto + max-width:100%), smaller zigzag
-    //   (±8px), tighter padding, plus overflow:hidden so chips
-    //   that would overflow the chord-wrapper bounds get clipped
-    //   instead of crossing into the neighbour.
+    // ── v3.5 chord-tones: TRUE two-row layout (no vertical overlap).
+    //   Implementation: chord-wrapper is position:relative +
+    //   padding-bottom:48px. chord-tones is absolutely positioned,
+    //   left:0 / right:0 / height:22px, with two bands:
+    //     odd  → bottom: 24px  (upper band)
+    //     even → bottom:  0    (lower band, 2px gap above)
+    //   No translateY, no zigzag-overlap. Adjacent chord-tones live
+    //   in physically separate horizontal bands.
     '  .chord-row .chord-wrapper,',
     '  .chord-row.modal .chord-wrapper {',
     '    overflow: visible !important;',
+    '    position: relative !important;',
+    '    padding-bottom: 48px !important;',
     '  }',
     '  .chord-row .chord-wrapper .chord-tones,',
     '  .chord-row.modal .chord-wrapper .chord-tones,',
     '  .chord-tones {',
+    '    position: absolute !important;',
+    '    left: 0 !important;',
+    '    right: 0 !important;',
+    '    height: 22px !important;',
     '    flex-wrap: nowrap !important;',
     '    overflow: hidden !important;',
-    '    gap: 3px !important;',
-    '    padding: 2px 3px !important;',
-    '    position: relative;',
+    '    gap: 2px !important;',
+    '    padding: 0 2px !important;',
+    '    margin: 0 !important;',
     '    z-index: 1;',
     '    width: auto !important;',
     '    max-width: 100% !important;',
-    '    border-radius: 6px;',
+    '    border-radius: 4px;',
     '    background: rgba(255,255,255,0.025);',
     '    justify-content: center;',
+    '    align-items: stretch;',
+    '    box-sizing: border-box;',
+    '    transform: none !important;',
     '  }',
+    '  .chord-row .chord-wrapper:nth-child(odd) .chord-tones,',
+    '  .chord-row.modal .chord-wrapper:nth-child(odd) .chord-tones {',
+    '    bottom: 24px !important;',
+    '  }',
+    '  .chord-row .chord-wrapper:nth-child(even) .chord-tones,',
+    '  .chord-row.modal .chord-wrapper:nth-child(even) .chord-tones {',
+    '    bottom: 0 !important;',
+    '  }',
+    // Chips — smaller (18px min-width), tighter padding
     '  .chord-row .chord-wrapper .chord-tones .tone-stack,',
     '  .chord-row.modal .chord-wrapper .chord-tones .tone-stack,',
     '  .chord-tones .tone-stack {',
-    '    min-width: 22px !important;',
+    '    min-width: 18px !important;',
     '    flex: 0 1 auto !important;',
-    '    border-radius: 4px;',
+    '    border-radius: 3px;',
     '    overflow: hidden;',
-    '    box-shadow: 0 1px 1px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.03) inset;',
+    '    box-shadow: 0 1px 1px rgba(0,0,0,0.12), 0 0 0 1px rgba(255,255,255,0.03) inset;',
+    '    height: 100%;',
+    '    display: flex;',
+    '    flex-direction: column;',
     '  }',
     '  .chord-tones .tone-top, .chord-tones .tone-bot {',
-    '    min-width: 20px;',
+    '    min-width: 16px;',
     '    text-align: center;',
-    '    padding: 1px 0;',
-    '    font-size: 10px;',
-    '    line-height: 1.15;',
+    '    padding: 0;',
+    '    font-size: 9px;',
+    '    line-height: 1.1;',
+    '    flex: 1 0 auto;',
     '  }',
     '  .chord-tones .tone-top {',
     '    font-weight: 700;',
     '  }',
-    // Smaller zigzag — ±8px (was ±16). Adjacent progression-row
-    // chord-tones now have plenty of vertical clearance from each
-    // other within the chord-row\'s 14px top+bottom padding.
-    '  .chord-row .chord-wrapper:nth-child(odd) .chord-tones,',
-    '  .chord-row.modal .chord-wrapper:nth-child(odd) .chord-tones {',
-    '    transform: translateY(-8px) !important;',
-    '  }',
-    '  .chord-row .chord-wrapper:nth-child(even) .chord-tones,',
-    '  .chord-row.modal .chord-wrapper:nth-child(even) .chord-tones {',
-    '    transform: translateY(8px) !important;',
-    '  }',
     '  .chord-row .chords-container,',
     '  .chord-row.modal .chords-container {',
-    '    padding-top: 14px !important;',
-    '    padding-bottom: 14px !important;',
+    '    padding-top: 4px !important;',
+    '    padding-bottom: 4px !important;',
     '  }',
     '  .chord-tones .tone-stack:active {',
-    '    transform: scale(0.94);',
+    '    transform: scale(0.92);',
     '    transition: transform 80ms ease-out;',
     '  }',
-    // ── v3.4 header: NO overrides. debug-with-patches.html has
-    //   been updated to include class="logo-image" + the <div
-    //   class="tagline"> element, so the production styles in
-    //   styles.css (.logo-image{50×50, radius:10px, shadow},
-    //   .logo-container{white card, radius:12px, shadow},
-    //   .tagline{uppercase, letter-spaced}) now apply correctly.
-    //   No patch CSS needed.
+    // v3.5 SPACE/X insert buttons styled for mobile @media
+    '  .uz-shape-type-insert {',
+    '    background: rgba(212,168,83,0.18);',
+    '    border: 1px solid rgba(212,168,83,0.45);',
+    '    color: #d4a853;',
+    '    padding: 4px 8px;',
+    '    border-radius: 5px;',
+    '    font-family: "Outfit", sans-serif;',
+    '    font-size: 13px; font-weight: 700;',
+    '    cursor: pointer;',
+    '    min-width: 32px; min-height: 32px;',
+    '    flex-shrink: 0;',
+    '  }',
+    '  .uz-shape-type-insert:active { transform: scale(0.94); background: rgba(212,168,83,0.32); }',
     '}',  // closes @media (max-width: 480px)
-    // ── iOS scroll-jump dampening on chord-shape input focus
+    // Desktop styles for SPACE/X insert buttons
+    '.uz-shape-type-insert {',
+    '  background: rgba(212,168,83,0.18);',
+    '  border: 1px solid rgba(212,168,83,0.45);',
+    '  color: #d4a853;',
+    '  padding: 4px 8px;',
+    '  border-radius: 5px;',
+    '  font-family: "Outfit", sans-serif;',
+    '  font-size: 13px; font-weight: 700;',
+    '  cursor: pointer;',
+    '  min-width: 32px; min-height: 32px;',
+    '  flex-shrink: 0;',
+    '}',
+    '.uz-shape-type-insert:active { transform: scale(0.94); background: rgba(212,168,83,0.32); }',
+    // iOS scroll-jump dampening on chord-shape input focus
     '.uz-shape-type-input {',
     '  scroll-margin-bottom: 40vh;',
     '  scroll-margin-top: 12vh;',
@@ -319,5 +373,5 @@
   ].join('\n');
   document.head.appendChild(style);
 
-  window.__uzPatchesV31 = { loaded: true, version: '3.4' };
+  window.__uzPatchesV31 = { loaded: true, version: '3.5' };
 })();
