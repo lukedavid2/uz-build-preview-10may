@@ -1,8 +1,7 @@
 /**
  * uz-deferred-patches.js — runtime patches for the six "deferred"
- * items from the 2026-05-12 mobile UX audit. Loaded after app.js
- * via index.html. v2: chord-name captured at edit time + toolbar
- * Select toggle (long-press removed).
+ * items from the 2026-05-12 mobile UX audit. v3 adds 5 follow-up
+ * mobile fixes (see commit message for details).
  */
 (function () {
   'use strict';
@@ -17,12 +16,14 @@
 
   function init() {
     injectStyles();
-    setupHintDotGate();
-    setupShapeEditorExtras();
-    setupMismatchWarnings();
-    setupMultiSelectDrag();
-    setupToolbarSelectToggle();
-    setupTabBoundarySnapshot();
+    setupHintDotGate();           // item 1 (overlay-scoped)
+    setupShapeEditorExtras();     // items 2 + 3 (overlay-scoped, re-injects on app.js rerender)
+    setupMismatchWarnings();      // item 4
+    setupMultiSelectDrag();       // item 5
+    setupToolbarSelectToggle();   // item 5 toolbar replacement for long-press
+    setupTabBoundarySnapshot();   // item 6
+    setupTabCellMobileKeyboard(); // v3 fix 3 — iOS keyboard on tab fret tap
+    setupZoomSliderMinPatch();    // v3 fix 4 — zoom-out down to 0.2
   }
 
   function injectStyles() {
@@ -58,6 +59,12 @@
       '.uz-select-toggle-btn:active { transform: scale(0.97); }',
       '.uz-select-toggle-btn.uz-select-toggle-active { background: #d4a853; color: #1a1a2a; border-color: #d4a853; }',
       '.uz-select-toggle-icon { margin-right: 4px; }',
+      // v3 fix 5 — chord-tones squashed on mobile
+      '@media (max-width: 480px) {',
+      '  .chord-tones { flex-wrap: wrap !important; gap: 4px !important; justify-content: center; row-gap: 4px; }',
+      '  .chord-tones .tone-stack { min-width: 30px; flex-shrink: 0; }',
+      '  .chord-tones .tone-top, .chord-tones .tone-bot { min-width: 28px; text-align: center; }',
+      '}',
     ].join('\n');
     var style = document.createElement('style');
     style.id = 'uzDeferredPatchesStyle';
@@ -99,27 +106,43 @@
     }, true);
   }
 
-  // Items 2 + 3: shape editor extras (click-triggered, not body observer)
+  // Items 2 + 3: shape editor extras
+  // v3 fix 1: use overlay-scoped MutationObserver so app.js's re-renders
+  // (which wipe injected rows) trigger re-injection. injectShapeExtras
+  // is idempotent via internal presence checks.
+  var shapeEditorObs = null;
+  var shapeEditorObsTarget = null;
   function setupShapeEditorExtras() {
-    function tryInject() {
+    function attachOverlayObs() {
       var overlay = document.getElementById('chordShapeOverlay');
-      if (overlay && !overlay.dataset.uzExtrasInjected) {
-        overlay.dataset.uzExtrasInjected = '1';
-        injectShapeExtras(overlay);
-      }
+      if (!overlay) return;
+      injectShapeExtras(overlay);
+      if (shapeEditorObs && shapeEditorObsTarget === overlay) return;
+      if (shapeEditorObs) { shapeEditorObs.disconnect(); shapeEditorObs = null; }
+      shapeEditorObsTarget = overlay;
+      shapeEditorObs = new MutationObserver(function () {
+        var ov = document.getElementById('chordShapeOverlay');
+        if (!ov) {
+          shapeEditorObs.disconnect();
+          shapeEditorObs = null;
+          shapeEditorObsTarget = null;
+          return;
+        }
+        injectShapeExtras(ov);
+      });
+      shapeEditorObs.observe(overlay, { childList: true, subtree: true });
     }
     document.addEventListener('click', function (e) {
       var t = e.target && e.target.closest && e.target.closest('[data-action="editChordShape"]');
       if (!t) return;
-      setTimeout(tryInject, 50);
-      setTimeout(tryInject, 200);
-      setTimeout(tryInject, 500);
+      setTimeout(attachOverlayObs, 50);
+      setTimeout(attachOverlayObs, 200);
+      setTimeout(attachOverlayObs, 500);
     }, true);
-    tryInject();
+    attachOverlayObs();
   }
 
   function injectShapeExtras(overlay) {
-    // Item 2: shift buttons
     var nav = overlay.querySelector('.shape-fret-nav');
     if (nav && !nav.parentElement.querySelector('.uz-shape-shift-row')) {
       var shiftRow = document.createElement('div');
@@ -133,18 +156,26 @@
         shiftShape(overlay, dir);
       });
     }
-    // Item 3: type-to-enter
     var body = overlay.querySelector('.shape-editor-body');
     var fretboard = overlay.querySelector('.shape-fretboard');
     if (body && fretboard && !body.querySelector('.uz-shape-type-row')) {
       var typeRow = document.createElement('div');
       typeRow.className = 'uz-shape-type-row';
-      typeRow.innerHTML = '<label for="uzShapeTypeInput">Type:</label><input id="uzShapeTypeInput" class="uz-shape-type-input" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="x 3 2 0 1 0"><button type="button" class="uz-shape-type-go">Set</button><span class="uz-hint">low E → high E</span>';
+      typeRow.innerHTML = '<label for="uzShapeTypeInput">Type:</label><input id="uzShapeTypeInput" class="uz-shape-type-input" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="x32010 or x 3 2 0 1 0"><button type="button" class="uz-shape-type-go">Set</button><span class="uz-hint">low E → high E</span>';
       body.insertBefore(typeRow, fretboard);
       var input = typeRow.querySelector('.uz-shape-type-input');
       var goBtn = typeRow.querySelector('.uz-shape-type-go');
       function apply() {
-        var tokens = (input.value || '').trim().split(/\s+/);
+        // v3 fix 2: accept both no-space and space-separated input.
+        var raw = (input.value || '').trim();
+        var tokens;
+        if (/\s/.test(raw)) {
+          // Space-separated: legacy multi-digit format (frets >= 10)
+          tokens = raw.split(/\s+/);
+        } else {
+          // No-space: each char is a single fret/symbol
+          tokens = raw.split('');
+        }
         applyFretString(overlay, tokens);
       }
       goBtn.addEventListener('click', apply);
@@ -179,7 +210,7 @@
   }
 
   function applyFretString(overlay, tokens) {
-    if (tokens.length !== 6) { flashTypeError(overlay, 'Need exactly 6 values'); return; }
+    if (tokens.length !== 6) { flashTypeError(overlay, 'Need 6 values (e.g. x32010 or x 3 2 0 1 0)'); return; }
     var target = tokens.map(function (t) {
       t = String(t).trim().toLowerCase();
       if (t === 'x' || t === '-') return null;
@@ -262,9 +293,7 @@
     setTimeout(function () { placeFrets(next); }, 30);
   }
 
-  // Item 4: mismatch warning. KEY: capture original chord name at
-  // edit-click time (NOT at save time), so app.js's auto-rename of
-  // the chord doesn't fool our match check.
+  // Item 4: mismatch warning, using origChord captured at edit time
   var mismatchByCardKey = Object.create(null);
   document.addEventListener('click', function (e) {
     var t = e.target && e.target.closest && e.target.closest('[data-action]');
@@ -359,7 +388,7 @@
     return allFound && noOutside;
   }
 
-  // Item 5: multi-select + drag (NO long-press; toolbar toggle below)
+  // Item 5: multi-select + drag (long-press removed, toolbar toggle is the entry)
   var selected = new Set();
   var selectMode = false;
   function cardKey(card) { return card.getAttribute('data-line') + ':' + card.getAttribute('data-idx'); }
@@ -408,7 +437,6 @@
     }, true);
   }
 
-  // Toolbar Select toggle (replaces mobile long-press)
   function setupToolbarSelectToggle() {
     function tryInject() {
       var toolButtons = document.getElementById('toolButtons');
@@ -560,7 +588,41 @@
     pdState = null;
   }
 
-  // Item 6: boundary snapshot (defensive guard on growth===1)
+  // v3 fix 3: iOS keyboard on melody tab fret-cell tap
+  function setupTabCellMobileKeyboard() {
+    document.addEventListener('click', function (e) {
+      var cell = e.target.closest && e.target.closest('.tab-cell[data-action="tabCellClick"]');
+      if (!cell) return;
+      Promise.resolve().then(function () {
+        var input = document.querySelector('.tab-cell-input');
+        if (!input) return;
+        input.setAttribute('inputmode', 'numeric');
+        input.setAttribute('pattern', '[0-9]*');
+        try { input.focus({ preventScroll: true }); } catch (err) { input.focus(); }
+      });
+    }, false);
+  }
+
+  // v3 fix 4: extend tab-zoom-slider min to 0.2
+  function setupZoomSliderMinPatch() {
+    function patchSlider(slider) {
+      if (!slider || slider.dataset.uzMinPatched) return;
+      slider.dataset.uzMinPatched = '1';
+      slider.setAttribute('min', '0.2');
+      var step = slider.getAttribute('step');
+      if (!step || parseFloat(step) > 0.05) slider.setAttribute('step', '0.05');
+    }
+    function scan() {
+      document.querySelectorAll('.tab-zoom-slider, input[class*="zoom-slider"]').forEach(patchSlider);
+    }
+    scan();
+    var area = document.getElementById('progressionArea');
+    if (area) {
+      new MutationObserver(scan).observe(area, { childList: true, subtree: true });
+    }
+  }
+
+  // Item 6: boundary snapshot (defensive growth===1 guard)
   var boundarySnapshots = Object.create(null);
   function setupTabBoundarySnapshot() {
     var area = document.getElementById('progressionArea');
