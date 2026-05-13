@@ -34,7 +34,6 @@
     if (body && fretboard && !body.querySelector('.uz-shape-type-row')) {
       var typeRow = document.createElement('div');
       typeRow.className = 'uz-shape-type-row';
-      // v3.2: type=tel + inputmode=numeric so iOS shows numeric keypad
       typeRow.innerHTML =
         '<label for="uzShapeTypeInput">Type:</label>' +
         '<input id="uzShapeTypeInput" class="uz-shape-type-input" type="tel" inputmode="numeric" pattern="[0-9xX\\- ]*" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="x32010 or x 3 2 0 1 0">' +
@@ -232,7 +231,6 @@
   style.id = 'uzDeferredPatchesV31Style';
   style.textContent = [
     '@media (max-width: 480px) {',
-    // chord-tones: revert horizontal scroll; use alternating row offsets
     '  .chord-row .chord-wrapper,',
     '  .chord-row.modal .chord-wrapper {',
     '    overflow: visible !important;',
@@ -273,7 +271,6 @@
     '    padding-top: 16px !important;',
     '    padding-bottom: 16px !important;',
     '  }',
-    // v3.2 fix 3: compact mobile header / logo
     '  .container .header {',
     '    padding: 4px 0 !important;',
     '    min-height: 0 !important;',
@@ -284,9 +281,16 @@
     '    margin: 0 !important;',
     '    gap: 6px !important;',
     '  }',
-    '  .container .logo-image {',
+    // Match both index.html (img.logo-image) and any header variant
+    // where the img has no class — important because the source PNG
+    // natural size is 2000x2000.
+    '  .container .logo-image,',
+    '  .container .header img {',
     '    width: 24px !important;',
     '    height: 24px !important;',
+    '    max-width: 24px !important;',
+    '    max-height: 24px !important;',
+    '    object-fit: contain;',
     '  }',
     '  .container .logo {',
     '    font-size: 0.95rem !important;',
@@ -296,7 +300,6 @@
     '    display: none !important;',
     '  }',
     '}',
-    // iOS scroll-jump dampening on chord-shape input focus
     '.uz-shape-type-input {',
     '  scroll-margin-bottom: 40vh;',
     '  scroll-margin-top: 12vh;',
@@ -308,5 +311,5 @@
   ].join('\n');
   document.head.appendChild(style);
 
-  window.__uzPatchesV31 = { loaded: true, version: '3.2' };
+  window.__uzPatchesV31 = { loaded: true, version: '3.2.1' };
 })();
