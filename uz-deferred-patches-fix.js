@@ -1,0 +1,1 @@
+/* Smoke-test copy of the fixed patches file (lives on the fix/deferred-patches-mobile-loop branch as uz-deferred-patches.js). Loaded ONLY by debug-with-patches.html for regression verification. The user's preview at index.html does NOT load this file. */
