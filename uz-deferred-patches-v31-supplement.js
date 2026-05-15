@@ -1,5 +1,5 @@
 /**
- * uz-deferred-patches-v31-supplement.js  (v3.6 mobile updates)
+ * uz-deferred-patches-v31-supplement.js  (v3.7 mobile updates)
  *
  * Loaded by the bootstrap AFTER the v3 IIFE. Re-implements the four
  * v3 behaviours that v3 got wrong on mobile, plus v3.2-v3.6
@@ -20,8 +20,8 @@
       shiftRow.className = 'uz-shape-shift-row';
       shiftRow.innerHTML =
         '<span class="uz-shape-shift-label">Shift shape:</span>' +
-        '<button type="button" class="uz-shape-shift-btn" data-uz-shift="-1" title="Shift down 1 fret">↓ 1 fret</button>' +
-        '<button type="button" class="uz-shape-shift-btn" data-uz-shift="+1" title="Shift up 1 fret">↑ 1 fret</button>';
+        '<button type="button" class="uz-shape-shift-btn" data-uz-shift="+1" title="Shift shape down (toward higher frets)">↓ 1 fret</button>' +
+        '<button type="button" class="uz-shape-shift-btn" data-uz-shift="-1" title="Shift shape up (toward lower frets)">↑ 1 fret</button>';
       nav.parentElement.insertBefore(shiftRow, nav.nextSibling);
       shiftRow.addEventListener('click', function (e) {
         var btn = e.target.closest('[data-uz-shift]');
@@ -271,7 +271,7 @@
     '  .chord-row.modal .chord-wrapper {',
     '    overflow: visible !important;',
     '    position: relative !important;',
-    '    padding-bottom: 48px !important;',
+    '    padding-bottom: 64px !important;',
     '  }',
     '  .chord-row .chord-wrapper .chord-tones,',
     '  .chord-row.modal .chord-wrapper .chord-tones,',
@@ -279,7 +279,7 @@
     '    position: absolute !important;',
     '    left: 0 !important;',
     '    right: auto !important;',
-    '    height: 22px !important;',
+    '    height: 30px !important;',
     '    flex-wrap: nowrap !important;',
     '    overflow: visible !important;',
     '    gap: 3px !important;',
@@ -297,7 +297,7 @@
     '  }',
     '  .chord-row .chord-wrapper:nth-child(odd) .chord-tones,',
     '  .chord-row.modal .chord-wrapper:nth-child(odd) .chord-tones {',
-    '    bottom: 24px !important;',
+    '    bottom: 32px !important;',
     '  }',
     '  .chord-row .chord-wrapper:nth-child(even) .chord-tones,',
     '  .chord-row.modal .chord-wrapper:nth-child(even) .chord-tones {',
@@ -307,7 +307,7 @@
     '  .chord-row .chord-wrapper .chord-tones .tone-stack,',
     '  .chord-row.modal .chord-wrapper .chord-tones .tone-stack,',
     '  .chord-tones .tone-stack {',
-    '    min-width: 22px !important;',
+    '    min-width: 24px !important;',
     '    flex: 0 0 auto !important;',
     '    border-radius: 4px;',
     '    overflow: hidden;',
@@ -317,11 +317,11 @@
     '    flex-direction: column;',
     '  }',
     '  .chord-tones .tone-top, .chord-tones .tone-bot {',
-    '    min-width: 20px;',
+    '    min-width: 22px;',
     '    text-align: center;',
     '    padding: 0;',
     '    font-size: 10px;',
-    '    line-height: 1.1;',
+    '    line-height: 1.3;',
     '    flex: 1 0 auto;',
     '  }',
     '  .chord-tones .tone-top {',
@@ -350,6 +350,22 @@
     '  }',
     '  .uz-shape-type-insert:active { transform: scale(0.94); background: rgba(212,168,83,0.32); }',
     '}',  // closes @media (max-width: 480px)
+    // v3.7: fix vertical alignment of borrowed iv chord.
+    // Roman numerals containing a ♭ (U+266D) glyph render in a
+    // fallback font with different metrics than plain ASCII
+    // numerals (e.g. "iv"), so the chord-numeral div height
+    // varied per label and pushed some chord-boxes up vs. down.
+    // Lock the numeral box to a fixed height with the text
+    // bottom-aligned so the chord-box below always lines up.
+    '.chord-numeral {',
+    '  height: 18px !important;',
+    '  line-height: 18px !important;',
+    '  display: flex !important;',
+    '  align-items: flex-end !important;',
+    '  justify-content: center !important;',
+    '  margin-bottom: 4px !important;',
+    '  overflow: hidden;',
+    '}',
     '.uz-shape-type-insert {',
     '  background: rgba(212,168,83,0.18);',
     '  border: 1px solid rgba(212,168,83,0.45);',
@@ -402,5 +418,5 @@
   ].join('\n');
   document.head.appendChild(style);
 
-  window.__uzPatchesV31 = { loaded: true, version: '3.6' };
+  window.__uzPatchesV31 = { loaded: true, version: '3.7' };
 })();
