@@ -1,5 +1,5 @@
 /**
- * uz-deferred-patches-v31-supplement.js  (v3.8 mobile updates)
+ * uz-deferred-patches-v31-supplement.js  (v3.9 mobile updates)
  *
  * Loaded by the bootstrap AFTER the v3 IIFE. Re-implements the four
  * v3 behaviours that v3 got wrong on mobile, plus v3.2-v3.6
@@ -271,7 +271,7 @@
     '  .chord-row.modal .chord-wrapper {',
     '    overflow: visible !important;',
     '    position: relative !important;',
-    '    padding-bottom: 64px !important;',
+    '    padding-bottom: 80px !important;',
     '  }',
     '  .chord-row .chord-wrapper .chord-tones,',
     '  .chord-row.modal .chord-wrapper .chord-tones,',
@@ -311,7 +311,7 @@
     '  }',
     '  .chord-row .chord-wrapper:nth-child(odd) .chord-tones,',
     '  .chord-row.modal .chord-wrapper:nth-child(odd) .chord-tones {',
-    '    bottom: 32px !important;',
+    '    bottom: 44px !important;',
     '  }',
     '  .chord-row .chord-wrapper:nth-child(even) .chord-tones,',
     '  .chord-row.modal .chord-wrapper:nth-child(even) .chord-tones {',
@@ -321,7 +321,7 @@
     '  .chord-row .chord-wrapper .chord-tones .tone-stack,',
     '  .chord-row.modal .chord-wrapper .chord-tones .tone-stack,',
     '  .chord-tones .tone-stack {',
-    '    min-width: 24px !important;',
+    '    min-width: 22px !important;',
     '    flex: 0 0 auto !important;',
     '    border-radius: 4px;',
     '    overflow: hidden;',
@@ -331,7 +331,7 @@
     '    flex-direction: column;',
     '  }',
     '  .chord-tones .tone-top, .chord-tones .tone-bot {',
-    '    min-width: 22px;',
+    '    min-width: 20px;',
     '    text-align: center;',
     '    padding: 0;',
     '    font-size: 10px;',
@@ -432,5 +432,5 @@
   ].join('\n');
   document.head.appendChild(style);
 
-  window.__uzPatchesV31 = { loaded: true, version: '3.8' };
+  window.__uzPatchesV31 = { loaded: true, version: '3.9' };
 })();
