@@ -1,5 +1,5 @@
 /**
- * uz-deferred-patches-v31-supplement.js  (v3.7 mobile updates)
+ * uz-deferred-patches-v31-supplement.js  (v3.8 mobile updates)
  *
  * Loaded by the bootstrap AFTER the v3 IIFE. Re-implements the four
  * v3 behaviours that v3 got wrong on mobile, plus v3.2-v3.6
@@ -277,7 +277,7 @@
     '  .chord-row.modal .chord-wrapper .chord-tones,',
     '  .chord-tones {',
     '    position: absolute !important;',
-    '    left: 0 !important;',
+    '    left: 50% !important;',
     '    right: auto !important;',
     '    height: 30px !important;',
     '    flex-wrap: nowrap !important;',
@@ -293,6 +293,20 @@
     '    justify-content: flex-start;',
     '    align-items: stretch;',
     '    box-sizing: border-box;',
+    '    transform: translateX(-50%) !important;',
+    '  }',
+    // v3.8: clamp leftmost / rightmost strips so they don't
+    // bleed off the viewport. Middle strips stay centered.
+    '  .chord-row .chords-container > .chord-wrapper:first-child .chord-tones,',
+    '  .chord-row.modal .chords-container > .chord-wrapper:first-child .chord-tones {',
+    '    left: 0 !important;',
+    '    right: auto !important;',
+    '    transform: none !important;',
+    '  }',
+    '  .chord-row .chords-container > .chord-wrapper:last-child .chord-tones,',
+    '  .chord-row.modal .chords-container > .chord-wrapper:last-child .chord-tones {',
+    '    left: auto !important;',
+    '    right: 0 !important;',
     '    transform: none !important;',
     '  }',
     '  .chord-row .chord-wrapper:nth-child(odd) .chord-tones,',
@@ -418,5 +432,5 @@
   ].join('\n');
   document.head.appendChild(style);
 
-  window.__uzPatchesV31 = { loaded: true, version: '3.7' };
+  window.__uzPatchesV31 = { loaded: true, version: '3.8' };
 })();
