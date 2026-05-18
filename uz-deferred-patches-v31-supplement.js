@@ -1,5 +1,5 @@
 /**
- * uz-deferred-patches-v31-supplement.js  (v3.10 mobile updates)
+ * uz-deferred-patches-v31-supplement.js  (v3.11 mobile updates)
  *
  * Loaded by the bootstrap AFTER the v3 IIFE. Re-implements the four
  * v3 behaviours that v3 got wrong on mobile, plus v3.2-v3.6
@@ -358,6 +358,17 @@
     // v3.10: a little extra horizontal padding on the chord-row
     // card so the rightmost 4-chip strip doesn't kiss the card edge
     '  .chord-row { padding-left: 14px !important; padding-right: 14px !important; }',
+    // v3.11: borrowed-mode rows (Lydian/Mixolydian/Phrygian/DomTriads)
+    // never have a second chord-tones band, so the 44px reserved below
+    // the top-band strip is wasted padding. Pin the strip to bottom:0
+    // and trim wrapper padding so the strip sits flush at the wrapper
+    // bottom — same 6px chord-box-to-strip gap as main-row top-band.
+    '  .chord-row.borrowed-mode .chord-wrapper {',
+    '    padding-bottom: 36px !important;',
+    '  }',
+    '  .chord-row.borrowed-mode .chord-wrapper .chord-tones {',
+    '    bottom: 0 !important;',
+    '  }',
     '}',  // closes @media (max-width: 480px)
     // v3.7: fix vertical alignment of borrowed iv chord.
     // Roman numerals containing a ♭ (U+266D) glyph render in a
@@ -427,5 +438,5 @@
   ].join('\n');
   document.head.appendChild(style);
 
-  window.__uzPatchesV31 = { loaded: true, version: '3.10' };
+  window.__uzPatchesV31 = { loaded: true, version: '3.11' };
 })();
