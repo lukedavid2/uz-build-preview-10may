@@ -1,5 +1,5 @@
 /**
- * uz-deferred-patches-v31-supplement.js  (v3.9 mobile updates)
+ * uz-deferred-patches-v31-supplement.js  (v3.10 mobile updates)
  *
  * Loaded by the bootstrap AFTER the v3 IIFE. Re-implements the four
  * v3 behaviours that v3 got wrong on mobile, plus v3.2-v3.6
@@ -295,20 +295,12 @@
     '    box-sizing: border-box;',
     '    transform: translateX(-50%) !important;',
     '  }',
-    // v3.8: clamp leftmost / rightmost strips so they don't
-    // bleed off the viewport. Middle strips stay centered.
-    '  .chord-row .chords-container > .chord-wrapper:first-child .chord-tones,',
-    '  .chord-row.modal .chords-container > .chord-wrapper:first-child .chord-tones {',
-    '    left: 0 !important;',
-    '    right: auto !important;',
-    '    transform: none !important;',
-    '  }',
-    '  .chord-row .chords-container > .chord-wrapper:last-child .chord-tones,',
-    '  .chord-row.modal .chords-container > .chord-wrapper:last-child .chord-tones {',
-    '    left: auto !important;',
-    '    right: 0 !important;',
-    '    transform: none !important;',
-    '  }',
+    // v3.10: every strip stays centered (left: 50% + translateX).
+    // The v3.8 :first/:last clamps pulled edge strips toward the
+    // wrapper boundary, causing the rightmost 4-chip strip to
+    // overlap the strip 2 positions to its left in the same band.
+    // Natural centering means edge strips bleed only ~1-5px past
+    // viewport on common phone widths — acceptable.
     '  .chord-row .chord-wrapper:nth-child(odd) .chord-tones,',
     '  .chord-row.modal .chord-wrapper:nth-child(odd) .chord-tones {',
     '    bottom: 44px !important;',
@@ -363,6 +355,9 @@
     '    flex-shrink: 0;',
     '  }',
     '  .uz-shape-type-insert:active { transform: scale(0.94); background: rgba(212,168,83,0.32); }',
+    // v3.10: a little extra horizontal padding on the chord-row
+    // card so the rightmost 4-chip strip doesn't kiss the card edge
+    '  .chord-row { padding-left: 14px !important; padding-right: 14px !important; }',
     '}',  // closes @media (max-width: 480px)
     // v3.7: fix vertical alignment of borrowed iv chord.
     // Roman numerals containing a ♭ (U+266D) glyph render in a
@@ -432,5 +427,5 @@
   ].join('\n');
   document.head.appendChild(style);
 
-  window.__uzPatchesV31 = { loaded: true, version: '3.9' };
+  window.__uzPatchesV31 = { loaded: true, version: '3.10' };
 })();
