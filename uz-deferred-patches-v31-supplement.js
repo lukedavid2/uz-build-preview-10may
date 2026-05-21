@@ -1,5 +1,5 @@
 /**
- * uz-deferred-patches-v31-supplement.js  (v3.11 mobile updates)
+ * uz-deferred-patches-v31-supplement.js  (v3.12 mobile updates)
  *
  * Loaded by the bootstrap AFTER the v3 IIFE. Re-implements the four
  * v3 behaviours that v3 got wrong on mobile, plus v3.2-v3.6
@@ -254,6 +254,42 @@
     }
   }, true);
 
+  // v3.12: normalise progression-builder chord-card heights.
+  // app.js renders the roman-numeral <span class="chord-roman">
+  // only for chords that have an analysed roman, so cards with a
+  // roman are one text-line taller than cards without. Inject a
+  // hidden placeholder .chord-roman into any card missing one so
+  // every .progression-chord has identical structure -> identical
+  // height regardless of content.
+  var normalisingChordsV31 = false;
+  function normaliseProgressionChordsV31() {
+    if (normalisingChordsV31) return;
+    normalisingChordsV31 = true;
+    try {
+      var cards = document.querySelectorAll('.progression-chord');
+      for (var i = 0; i < cards.length; i++) {
+        var card = cards[i];
+        if (card.querySelector('.chord-roman')) continue;
+        var nameEl = card.querySelector('.chord-name');
+        if (!nameEl) continue;
+        var ph = document.createElement('span');
+        ph.className = 'chord-roman uz-roman-placeholder-v31';
+        ph.setAttribute('aria-hidden', 'true');
+        ph.style.visibility = 'hidden';
+        ph.textContent = '\u00b7';
+        nameEl.insertAdjacentElement('afterend', ph);
+      }
+    } catch (e) {}
+    normalisingChordsV31 = false;
+  }
+  normaliseProgressionChordsV31();
+  if (progressionArea) {
+    new MutationObserver(function () {
+      if (normalisingChordsV31) return;
+      normaliseProgressionChordsV31();
+    }).observe(progressionArea, { childList: true, subtree: true });
+  }
+
   // ─── v3.6 CSS ──────────────────────────────────────────────────
   var style = document.createElement('style');
   style.id = 'uzDeferredPatchesV31Style';
@@ -438,5 +474,5 @@
   ].join('\n');
   document.head.appendChild(style);
 
-  window.__uzPatchesV31 = { loaded: true, version: '3.11' };
+  window.__uzPatchesV31 = { loaded: true, version: '3.12' };
 })();
