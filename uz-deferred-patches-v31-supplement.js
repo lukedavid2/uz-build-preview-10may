@@ -1,14 +1,20 @@
 /**
- * uz-deferred-patches-v31-supplement.js  (v3.12 mobile updates)
+ * uz-deferred-patches-v31-supplement.js  (v3.13 mobile updates)
  *
  * Loaded by the bootstrap AFTER the v3 IIFE. Re-implements the four
- * v3 behaviours that v3 got wrong on mobile, plus v3.2-v3.6
+ * v3 behaviours that v3 got wrong on mobile, plus v3.2-v3.13
  * user-feedback iterations:
  *   - shape-type input keyboard: numeric keypad + in-app SPACE/X buttons,
  *     stacked layout (input row 1, buttons row 2)
  *   - chord-tones: two-row banding, max-content width, 22px chips
  *   - header: NO overrides (debug HTML matches production)
  *   - iOS scroll-jump dampening on chord-shape input focus
+ *
+ * v3.13: chord-tones bands were 30px tall — too short for a chip,
+ * which stacks two text rows (interval label + pitch name). Chips
+ * were clipped top/bottom. Bands raised to 38px, each tone row now
+ * flex-centres its label so nothing clips. Wrapper padding bumped
+ * to reserve the taller two-band area.
  */
 (function () {
   'use strict';
@@ -276,7 +282,7 @@
         ph.className = 'chord-roman uz-roman-placeholder-v31';
         ph.setAttribute('aria-hidden', 'true');
         ph.style.visibility = 'hidden';
-        ph.textContent = '\u00b7';
+        ph.textContent = '·';
         nameEl.insertAdjacentElement('afterend', ph);
       }
     } catch (e) {}
@@ -290,24 +296,31 @@
     }).observe(progressionArea, { childList: true, subtree: true });
   }
 
-  // ─── v3.6 CSS ──────────────────────────────────────────────────
+  // ─── v3.13 CSS ─────────────────────────────────────────────────
   var style = document.createElement('style');
   style.id = 'uzDeferredPatchesV31Style';
   style.textContent = [
     '@media (max-width: 480px) {',
-    // ── v3.6 chord-tones: TRUE two-row layout, width:max-content,
+    // ── chord-tones: TRUE two-row layout, width:max-content,
     //   no horizontal column-width constraint. Each strip is
-    //   absolute-positioned with left:0, right:auto, width:max-content
-    //   so it grows to fit all its chips at natural 22px size.
+    //   absolute-positioned, centered (left:50% + translateX), so
+    //   it grows to fit all its chips at natural 22px size.
     //   Adjacent chord (opposite band) horizontal overlap is safe
-    //   because they\'re vertically separated. Same-band chord 3
-    //   is 2 wrappers away (~120px) which exceeds typical chord-
-    //   tones strip width.
+    //   because they\'re vertically separated.
+    //
+    //   v3.13 vertical geometry (was clipping at 30px bands):
+    //     band height        38px   (was 30px — a chip stacks two
+    //                                 text rows + the ♭ glyph runs
+    //                                 tall; 30px clipped top/bottom)
+    //     even band  bottom:  0      (spans 0 → 38px)
+    //     odd  band  bottom: 44px    (spans 44 → 82px; 6px gap)
+    //     wrapper padding-bottom 86px (reserves both bands + gap
+    //                                  + 4px breathing room)
     '  .chord-row .chord-wrapper,',
     '  .chord-row.modal .chord-wrapper {',
     '    overflow: visible !important;',
     '    position: relative !important;',
-    '    padding-bottom: 80px !important;',
+    '    padding-bottom: 86px !important;',
     '  }',
     '  .chord-row .chord-wrapper .chord-tones,',
     '  .chord-row.modal .chord-wrapper .chord-tones,',
@@ -315,7 +328,7 @@
     '    position: absolute !important;',
     '    left: 50% !important;',
     '    right: auto !important;',
-    '    height: 30px !important;',
+    '    height: 38px !important;',
     '    flex-wrap: nowrap !important;',
     '    overflow: visible !important;',
     '    gap: 3px !important;',
@@ -345,7 +358,9 @@
     '  .chord-row.modal .chord-wrapper:nth-child(even) .chord-tones {',
     '    bottom: 0 !important;',
     '  }',
-    // Chips back to 22px (column-width constraint removed)
+    // Chip: 22px min-width, fills the full 38px band height. The
+    // inner overflow:hidden only rounds the 4px corners — it no
+    // longer clips content because the band is tall enough.
     '  .chord-row .chord-wrapper .chord-tones .tone-stack,',
     '  .chord-row.modal .chord-wrapper .chord-tones .tone-stack,',
     '  .chord-tones .tone-stack {',
@@ -354,17 +369,28 @@
     '    border-radius: 4px;',
     '    overflow: hidden;',
     '    box-shadow: 0 1px 1px rgba(0,0,0,0.14), 0 0 0 1px rgba(255,255,255,0.04) inset;',
-    '    height: 100%;',
+    '    height: 100% !important;',
+    '    min-height: 38px !important;',
     '    display: flex;',
     '    flex-direction: column;',
     '  }',
+    // v3.13: each tone row takes half the 38px band (~19px) and
+    // flex-centres its label vertically + horizontally, so the
+    // interval label and pitch name never clip at top or bottom.
+    // flex:1 1 auto (was 1 0 auto) lets a row shrink rather than
+    // force an overflow if a glyph runs tall.
     '  .chord-tones .tone-top, .chord-tones .tone-bot {',
     '    min-width: 20px;',
     '    text-align: center;',
-    '    padding: 0;',
+    '    padding: 1px 2px;',
     '    font-size: 10px;',
-    '    line-height: 1.3;',
-    '    flex: 1 0 auto;',
+    '    line-height: 1.15;',
+    '    flex: 1 1 auto;',
+    '    display: flex;',
+    '    align-items: center;',
+    '    justify-content: center;',
+    '    box-sizing: border-box;',
+    '    overflow: visible;',
     '  }',
     '  .chord-tones .tone-top {',
     '    font-weight: 700;',
@@ -399,8 +425,9 @@
     // the top-band strip is wasted padding. Pin the strip to bottom:0
     // and trim wrapper padding so the strip sits flush at the wrapper
     // bottom — same 6px chord-box-to-strip gap as main-row top-band.
+    // v3.13: 38px band + 6px breathing room = 44px.
     '  .chord-row.borrowed-mode .chord-wrapper {',
-    '    padding-bottom: 36px !important;',
+    '    padding-bottom: 44px !important;',
     '  }',
     '  .chord-row.borrowed-mode .chord-wrapper .chord-tones {',
     '    bottom: 0 !important;',
@@ -474,5 +501,5 @@
   ].join('\n');
   document.head.appendChild(style);
 
-  window.__uzPatchesV31 = { loaded: true, version: '3.12' };
+  window.__uzPatchesV31 = { loaded: true, version: '3.13' };
 })();
